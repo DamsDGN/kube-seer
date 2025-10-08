@@ -24,12 +24,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: 🐍 Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: 📦 Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -63,7 +63,7 @@ jobs:
         bandit -r src/ -f json -o bandit-report.json || true
 
     - name: 📊 Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results-${{ matrix.python-version }}
@@ -142,20 +142,21 @@ jobs:
           REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
 
     - name: 🔍 Scan image for vulnerabilities
-      uses: anchore/scan-action@v3
+      uses: aquasecurity/trivy-action@master
       id: scan
       with:
-        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        fail-build: false
-        severity-cutoff: high
-        acs-report-enable: true
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '0'
 
     - name: 📊 Upload vulnerability scan results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: vulnerability-scan
-        path: ${{ steps.scan.outputs.sarif }}
+        path: trivy-results.sarif
 
   # Release GitHub (si tag)
   release:
