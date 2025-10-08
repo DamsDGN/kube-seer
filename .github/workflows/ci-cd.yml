@@ -1,0 +1,221 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: damsdgn/efk-sre-agent
+
+jobs:
+  # Tests et validation du code
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: 📦 Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: 🔧 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest flake8 black mypy
+
+    - name: 🎨 Code formatting check (Black)
+      run: black --check src/ tests/
+
+    - name: 🔍 Lint with flake8
+      run: |
+        flake8 src/ tests/ --max-line-length=100 --ignore=E203,W503
+
+    - name: 🧪 Type checking with mypy
+      run: mypy src/ --ignore-missing-imports
+
+    - name: ✅ Run tests
+      run: |
+        # Tests unitaires sans dépendances externes
+        python -m pytest tests/ -v --tb=short -x
+
+    - name: 🔒 Security scan with bandit
+      run: |
+        pip install bandit
+        bandit -r src/ -f json -o bandit-report.json || true
+
+    - name: 📊 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          bandit-report.json
+          pytest.xml
+
+  # Validation Helm
+  helm-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: ⚓ Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: 🔍 Lint Helm chart
+      run: |
+        helm lint ./helm/efk-sre-agent/
+
+    - name: 📋 Template Helm chart
+      run: |
+        helm template test ./helm/efk-sre-agent/ \
+          --values ./helm/efk-sre-agent/examples/values-dev.yaml > /dev/null
+
+  # Build et push de l'image Docker
+  build-and-push:
+    needs: [test, helm-lint]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🏷️ Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 🔑 Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: 🏗️ Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+          REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+    - name: 🔍 Scan image for vulnerabilities
+      uses: anchore/scan-action@v3
+      id: scan
+      with:
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        fail-build: false
+        severity-cutoff: high
+        acs-report-enable: true
+
+    - name: 📊 Upload vulnerability scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: vulnerability-scan
+        path: ${{ steps.scan.outputs.sarif }}
+
+  # Release GitHub (si tag)
+  release:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: ⚓ Set up Helm  
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: 📦 Package Helm chart
+      run: |
+        mkdir -p helm-packages
+        helm package ./helm/efk-sre-agent/ --destination ./helm-packages/
+
+    - name: 🎉 Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          helm-packages/*.tgz
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## 🚀 Release ${{ github.ref_name }}
+          
+          ### 🐳 Docker Image
+          ```bash
+          docker pull damsdgn/efk-sre-agent:${{ github.ref_name }}
+          ```
+          
+          ### ⚓ Helm Installation
+          ```bash
+          helm install efk-sre-agent oci://ghcr.io/damsdgn/efk-sre-agent-chart --version ${{ github.ref_name }}
+          ```
+          
+          ### 📋 Changes
+          See the full changelog below.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Notification (optionnel)
+  notify:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📢 Notify deployment status
+      run: |
+        if [ "${{ needs.build-and-push.result }}" == "success" ]; then
+          echo "✅ Build and deployment successful!"
+          echo "🐳 New image available: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        else
+          echo "❌ Build or deployment failed!"
+        fi

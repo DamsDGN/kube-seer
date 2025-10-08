@@ -44,82 +44,112 @@ L'agent SRE utilise des techniques de Machine Learning pour :
 - Scoring de criticité basé sur la convergence des signaux
 - Déduplication intelligente des alertes
 
-## 🚀 Installation et Déploiement
+## Installation et déploiement
 
 ### Prérequis
-- Kubernetes cluster (ou Kind pour le développement local)
+
 - Python 3.11+
-- Docker
-- Accès à Elasticsearch
-- Permissions Kubernetes (lecture pods/metrics)
+- Docker et Docker Compose
+- Kubernetes (optionnel, pour le déploiement en production)
+- Helm 3.x (pour le déploiement Kubernetes)
+- pipx pour l'isolation des outils
 
-### 🏃 Démarrage Rapide avec Kind et pipx
+### Installation en mode développement
 
+1. Cloner le repository :
 ```bash
-# Configuration complète de l'environnement
-git clone https://github.com/DamsDGN/efk-sre.git
+git clone <repository-url>
 cd efk-sre
-make setup
-
-# Activation et tests
-source activate.sh
-make test-quick
-
-# Déploiement local
-make deploy
 ```
 
-Voir [QUICKSTART.md](QUICKSTART.md) pour le guide détaillé.
-
-### 1. Installation des dépendances
-
+2. Configurer l'environnement de développement :
 ```bash
-pip install -r requirements.txt
+make setup-dev
 ```
 
-### 2. Configuration
-
-Copier le fichier d'exemple et configurer :
-
+3. Lancer les tests :
 ```bash
-cp .env.example .env
-# Éditer .env avec vos paramètres
+make test
 ```
 
-Variables principales :
+4. Démarrer l'agent en mode développement :
 ```bash
-ELASTICSEARCH_URL=http://elasticsearch:9200
-ELASTICSEARCH_USER=elastic
-ELASTICSEARCH_PASSWORD=your-password
-METRICS_INDEX=metricbeat-*
-LOGS_INDEX=fluentd-*
-ANALYSIS_INTERVAL=300
+make run-dev
 ```
 
-### 3. Déploiement sur Kubernetes (Production)
+### Déploiement avec Docker
+
+1. Construire l'image :
+```bash
+make docker-build
+```
+
+2. Lancer avec Docker Compose :
+```bash
+make docker-run
+```
+
+### Déploiement avec Helm (Recommandé)
+
+#### Installation rapide
 
 ```bash
-# Créer le namespace de monitoring
+# Déploiement en développement
+./helm-deploy.sh install dev
+
+# Déploiement en production
+./helm-deploy.sh install prod
+```
+
+#### Installation manuelle
+
+1. Ajouter le namespace :
+```bash
 kubectl create namespace monitoring
-
-# Configurer les secrets (IMPORTANT: Utilisez vos vraies valeurs!)
-kubectl create secret generic efk-sre-agent-secrets \
-  --from-literal=ELASTICSEARCH_PASSWORD=your-real-password \
-  -n monitoring
-
-# Déployer l'agent
-kubectl apply -f k8s/deployment.yaml
 ```
 
-### 4. Déploiement local avec Kind (Développement)
+2. Installer le chart :
+```bash
+# Environnement de développement
+helm install efk-sre-agent ./helm/efk-sre-agent \
+  --namespace monitoring \
+  --values ./helm/efk-sre-agent/examples/values-dev.yaml
+
+# Environnement de production
+helm install efk-sre-agent ./helm/efk-sre-agent \
+  --namespace monitoring \
+  --values ./helm/efk-sre-agent/examples/values-prod.yaml
+```
+
+3. Vérifier le déploiement :
+```bash
+helm status efk-sre-agent -n monitoring
+kubectl get pods -n monitoring -l app.kubernetes.io/name=efk-sre-agent
+```
+
+#### Gestion du déploiement Helm
 
 ```bash
-# Utiliser le script automatisé
-./deploy.sh deploy
+# Mettre à jour
+./helm-deploy.sh upgrade prod
 
-# Ou étape par étape
-./deploy.sh setup-kind    # Créer le cluster Kind
-./deploy.sh deploy-quick  # Déployer l'application
+# Voir le statut
+./helm-deploy.sh status
+
+# Désinstaller
+./helm-deploy.sh uninstall
+```
+
+### Déploiement sur Kubernetes (legacy)
+
+1. Appliquer les manifests :
+```bash
+kubectl apply -f k8s/
+```
+
+2. Vérifier le déploiement :
+```bash
+kubectl get pods -l app=efk-sre-agent
 ```
 
 ## 📊 API REST
@@ -292,19 +322,48 @@ Protection contre le spam :
 
 ## 🛠️ Développement
 
-### Structure du Code
+### Structure du projet
 
 ```
-src/
-├── agent.py          # Agent principal
-├── config.py         # Configuration
-├── models.py         # Modèles de données
-├── metrics_analyzer.py # Analyse métriques + ML
-├── log_analyzer.py   # Analyse logs + NLP
-├── alerting.py       # Gestionnaire d'alertes
-├── api.py           # API REST
-└── main.py          # Point d'entrée
+efk-sre/
+├── src/                    # Code source principal
+│   ├── main.py            # Point d'entrée de l'application
+│   ├── agent.py           # Agent SRE principal
+│   ├── config.py          # Configuration
+│   ├── models.py          # Modèles de données
+│   ├── log_analyzer.py    # Analyseur de logs
+│   ├── metrics_analyzer.py # Analyseur de métriques
+│   ├── alerting.py        # Système d'alertes
+│   └── api.py             # API REST
+├── tests/                 # Tests unitaires
+├── helm/                  # Charts Helm pour déploiement
+│   └── efk-sre-agent/    # Chart principal
+│       ├── Chart.yaml    # Métadonnées du chart
+│       ├── values.yaml   # Valeurs par défaut
+│       ├── templates/    # Templates Kubernetes
+│       └── examples/     # Exemples de configuration
+├── .github/workflows/     # Pipelines CI/CD
+├── docs/                  # Documentation
+├── k8s/                   # Manifests Kubernetes (legacy)
+├── docker-compose.yml     # Configuration Docker Compose
+├── Dockerfile            # Image Docker optimisée
+├── helm-deploy.sh        # Script de déploiement Helm
+├── Makefile              # Commandes de développement
+└── requirements.txt      # Dépendances Python
 ```
+
+## CI/CD et automatisation
+
+Le projet inclut une pipeline CI/CD complète avec GitHub Actions :
+
+- **Tests automatisés** : Tests unitaires sur Python 3.11, 3.12, 3.13
+- **Sécurité** : Scan de vulnérabilités avec Trivy
+- **Validation Helm** : Vérification des charts
+- **Build Docker** : Images multi-plateforme (AMD64/ARM64)
+- **Publication** : Push automatique sur Docker Hub
+- **Releases** : Création automatique pour les tags
+
+Voir [docs/CI-CD.md](docs/CI-CD.md) pour la configuration détaillée.
 
 ### Ajout de Nouveaux Analyseurs
 

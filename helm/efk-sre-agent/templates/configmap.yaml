@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "efk-sre-agent.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+data:
+  ELASTICSEARCH_URL: {{ .Values.config.elasticsearch.url | quote }}
+  ELASTICSEARCH_USER: {{ .Values.config.elasticsearch.user | quote }}
+  METRICS_INDEX: {{ .Values.config.indices.metrics | quote }}
+  LOGS_INDEX: {{ .Values.config.indices.logs | quote }}
+  K8S_IN_CLUSTER: {{ .Values.config.kubernetes.inCluster | quote }}
+  K8S_NAMESPACE: {{ .Values.config.kubernetes.namespace | quote }}
+  ANALYSIS_INTERVAL: {{ .Values.config.analysis.interval | quote }}
+  ANOMALY_THRESHOLD: {{ .Values.config.analysis.anomalyThreshold | quote }}
+  CPU_THRESHOLD_WARNING: {{ .Values.config.thresholds.cpu.warning | quote }}
+  CPU_THRESHOLD_CRITICAL: {{ .Values.config.thresholds.cpu.critical | quote }}
+  MEMORY_THRESHOLD_WARNING: {{ .Values.config.thresholds.memory.warning | quote }}
+  MEMORY_THRESHOLD_CRITICAL: {{ .Values.config.thresholds.memory.critical | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  MODEL_RETRAIN_INTERVAL: {{ .Values.config.models.retrainInterval | quote }}
+  MODEL_WINDOW_SIZE: {{ .Values.config.models.windowSize | quote }}
+  {{- if .Values.alerting.webhook.enabled }}
+  WEBHOOK_URL: {{ .Values.alerting.webhook.url | quote }}
+  {{- end }}
+  {{- if .Values.alerting.email.enabled }}
+  EMAIL_SMTP_SERVER: {{ .Values.alerting.email.smtpServer | quote }}
+  EMAIL_SMTP_PORT: {{ .Values.alerting.email.smtpPort | quote }}
+  EMAIL_USERNAME: {{ .Values.alerting.email.username | quote }}
+  EMAIL_RECIPIENTS: {{ .Values.alerting.email.recipients | quote }}
+  {{- end }}

@@ -1,0 +1,149 @@
+# Configuration par défaut de l'agent IA SRE EFK
+
+# Image de l'agent
+image:
+  repository: efk-sre-agent
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Replicas
+replicaCount: 1
+
+# Configuration de l'agent
+config:
+  # Elasticsearch
+  elasticsearch:
+    url: "http://elasticsearch.elastic-system.svc.cluster.local:9200"
+    user: "elastic"
+    # Le mot de passe sera lu depuis le secret elasticsearch-credentials
+    passwordSecret: "elasticsearch-credentials"
+    passwordKey: "password"
+  
+  # Index Elasticsearch
+  indices:
+    metrics: "metricbeat-*"
+    logs: "fluentd-*"
+  
+  # Kubernetes
+  kubernetes:
+    inCluster: true
+    namespace: "default"
+  
+  # Analyse
+  analysis:
+    interval: 300  # 5 minutes
+    anomalyThreshold: 0.05
+  
+  # Seuils d'alerte
+  thresholds:
+    cpu:
+      warning: 70.0
+      critical: 85.0
+    memory:
+      warning: 70.0
+      critical: 85.0
+  
+  # Logging
+  logLevel: "INFO"
+  
+  # Modèles ML
+  models:
+    retrainInterval: 3600  # 1 heure
+    windowSize: 100
+
+# Alerting (optionnel)
+alerting:
+  enabled: true
+  webhook:
+    enabled: false
+    url: ""
+  slack:
+    enabled: false
+    webhook: ""
+  email:
+    enabled: false
+    smtpServer: ""
+    smtpPort: 587
+    username: ""
+    recipients: ""
+
+# Service
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# Ingress (optionnel)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: efk-sre-agent.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+
+# Service account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# RBAC
+rbac:
+  create: true
+
+# Monitoring (Prometheus)
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Nécessite Prometheus Operator
+    interval: 30s
+    path: /metrics
+  prometheusRule:
+    enabled: false  # Nécessite Prometheus Operator
+
+# Autoscaling (optionnel)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+# Persistence pour les modèles ML
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  storageClass: ""

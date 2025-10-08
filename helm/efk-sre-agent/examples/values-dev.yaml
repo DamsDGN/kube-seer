@@ -1,0 +1,48 @@
+# Exemple pour environnement de développement
+# Usage: helm install dev-sre-agent ./helm/efk-sre-agent/ -f examples/values-dev.yaml
+
+replicaCount: 1
+
+config:
+  elasticsearch:
+    url: "http://elasticsearch.elastic-system.svc.cluster.local:9200"
+    user: "elastic"
+  
+  analysis:
+    interval: 120  # 2 minutes pour tests rapides
+    anomalyThreshold: 0.1  # Plus permissif
+  
+  logLevel: "DEBUG"
+
+# Resources minimales pour dev
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Pas de persistence en dev
+persistence:
+  enabled: false
+
+# Alerting désactivé en dev
+alerting:
+  enabled: false
+
+# Ingress pour accès local
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: sre-agent.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Monitoring basique
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Pas de Prometheus Operator en dev

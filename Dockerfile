@@ -1,9 +1,19 @@
-FROM python:3.11-slim
+FROM python:3.11-slim as base
 
-# Métadonnées
-LABEL maintainer="dams@example.com"
-LABEL description="Agent IA SRE pour l'analyse des métriques et logs EFK"
-LABEL version="1.0.0"
+# Métadonnées pour OCI
+LABEL org.opencontainers.image.title="EFK SRE Agent"
+LABEL org.opencontainers.image.description="Agent IA SRE pour l'analyse automatisée des métriques et logs EFK"
+LABEL org.opencontainers.image.source="https://github.com/DamsDGN/efk-sre"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Arguments de build (fournis par le CI/CD)
+ARG BUILDTIME
+ARG VERSION=dev
+ARG REVISION=unknown
+
+LABEL org.opencontainers.image.created=$BUILDTIME
+LABEL org.opencontainers.image.version=$VERSION
+LABEL org.opencontainers.image.revision=$REVISION
 
 # Variables d'environnement
 ENV PYTHONUNBUFFERED=1
@@ -11,22 +21,37 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Créer un utilisateur non-root
-RUN groupadd -r sre && useradd -r -g sre sre
+# Étape de build des dépendances
+FROM base as builder
 
-# Répertoire de travail
-WORKDIR /app
-
-# Installer les dépendances système
+# Installer les dépendances de compilation
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Créer l'environnement virtuel
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Copier les requirements et installer les dépendances Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Étape finale
+FROM base as final
+
+# Créer un utilisateur non-root
+RUN groupadd -r sre && useradd -r -g sre sre
+
+# Copier l'environnement virtuel depuis le builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Répertoire de travail
+WORKDIR /app
 
 # Copier le code source
 COPY src/ ./src/

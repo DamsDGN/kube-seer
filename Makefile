@@ -52,6 +52,31 @@ build: ## Build l'image Docker
 deploy: ## Déploie l'agent complet (cluster + app)
 	./deploy.sh deploy
 
+deploy-helm: ## Déploie l'agent avec Helm (recommandé)
+	@echo "🚀 Déploiement avec Helm..."
+	@if ! command -v helm >/dev/null 2>&1; then \
+		echo "❌ Helm n'est pas installé. Voir https://helm.sh/docs/intro/install/"; \
+		exit 1; \
+	fi
+	@echo "📦 Installation de l'agent SRE avec Helm..."
+	helm upgrade --install efk-sre-agent ./helm/efk-sre-agent/ \
+		--create-namespace \
+		--namespace monitoring \
+		--wait \
+		--timeout 10m
+	@echo "✅ Agent déployé avec succès!"
+	@echo "💡 Accès à l'API: kubectl port-forward -n monitoring svc/efk-sre-agent-efk-sre-agent 8080:8080"
+
+deploy-helm-dev: ## Déploie l'agent avec Helm en mode dev
+	@echo "🚀 Déploiement avec Helm (mode développement)..."
+	helm upgrade --install efk-sre-agent-dev ./helm/efk-sre-agent/ \
+		--create-namespace \
+		--namespace monitoring \
+		--values ./helm/efk-sre-agent/examples/values-dev.yaml \
+		--wait \
+		--timeout 5m
+	@echo "✅ Agent dev déployé!"
+
 deploy-quick: ## Déploie l'agent rapidement (sans recréer le cluster)
 	./deploy.sh deploy-quick
 
@@ -131,8 +156,77 @@ port-forward: ## Forward l'API sur localhost:8080
 	@echo "⏹️  Appuyer Ctrl+C pour arrêter"
 	kubectl port-forward -n monitoring svc/efk-sre-agent 8080:8080
 
+helm-lint: ## Valide le chart Helm
+	@if command -v helm >/dev/null 2>&1; then \
+		helm lint ./helm/efk-sre-agent/; \
+	else \
+		echo "❌ Helm non installé"; \
+	fi
+
+helm-template: ## Génère les manifests Helm (sans déployer)
+	@if command -v helm >/dev/null 2>&1; then \
+		helm template efk-sre-agent ./helm/efk-sre-agent/ \
+			--namespace monitoring \
+			--values ./helm/efk-sre-agent/examples/values-dev.yaml; \
+	else \
+		echo "❌ Helm non installé"; \
+	fi
+
+helm-package:
+	@echo "📦 Création du package Helm..."
+	helm package helm/efk-sre-agent --destination ./dist/
+
+helm-install-dev:
+	@echo "🚀 Installation Helm (développement)..."
+	./helm-deploy.sh install dev
+
+helm-install-prod:
+	@echo "🚀 Installation Helm (production)..."
+	./helm-deploy.sh install prod
+
+helm-upgrade-dev:
+	@echo "⬆️ Mise à jour Helm (développement)..."
+	./helm-deploy.sh upgrade dev
+
+helm-upgrade-prod:
+	@echo "⬆️ Mise à jour Helm (production)..."
+	./helm-deploy.sh upgrade prod
+
+helm-status:
+	@echo "📊 Statut du déploiement Helm..."
+	./helm-deploy.sh status
+
+helm-uninstall:
+	@echo "🗑️ Désinstallation Helm..."
+	./helm-deploy.sh uninstall
+
+helm-dry-run-dev:
+	@echo "🧪 Test Helm (développement)..."
+	helm install efk-sre-agent-test ./helm/efk-sre-agent \
+		--namespace monitoring \
+		--values ./helm/efk-sre-agent/examples/values-dev.yaml \
+		--dry-run --debug
+
+helm-dry-run-prod:
+	@echo "🧪 Test Helm (production)..."
+	helm install efk-sre-agent-test ./helm/efk-sre-agent \
+		--namespace monitoring \
+		--values ./helm/efk-sre-agent/examples/values-prod.yaml \
+		--dry-run --debug
+
+helm-docs: ## Génère la documentation Helm
+	@echo "📖 Documentation Helm disponible dans ./helm/efk-sre-agent/README.md"
+
 clean: ## Supprime l'application (garde le cluster)
 	./deploy.sh cleanup
+
+clean-helm: ## Désinstalle l'agent déployé avec Helm
+	@if helm list -n monitoring | grep -q efk-sre-agent; then \
+		helm uninstall efk-sre-agent -n monitoring; \
+		echo "✅ Agent Helm désinstallé"; \
+	else \
+		echo "ℹ️  Aucun déploiement Helm trouvé"; \
+	fi
 
 clean-all: ## Supprime tout (cluster inclus)
 	./deploy.sh cleanup-kind

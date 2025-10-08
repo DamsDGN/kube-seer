@@ -1,0 +1,23 @@
+apiVersion: v2
+name: efk-sre-agent
+description: Agent IA SRE pour l'analyse automatisée des métriques et logs EFK
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/DamsDGN/efk-sre
+sources:
+  - https://github.com/DamsDGN/efk-sre
+maintainers:
+  - name: DamsDGN
+    email: contact@example.com
+keywords:
+  - sre
+  - monitoring
+  - elasticsearch
+  - fluentd
+  - kibana
+  - ml
+  - ai
+  - anomaly-detection
+annotations:
+  category: Monitoring
