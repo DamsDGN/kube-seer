@@ -3,7 +3,7 @@
 # Variables
 PYTHON := python3
 VENV := .venv
-CLUSTER_NAME := efk-sre
+CLUSTER_NAME := efk-sre-agent
 ACTIVATE := source $(VENV)/bin/activate &&
 
 help: ## Affiche cette aide

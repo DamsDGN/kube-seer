@@ -1,7 +1,6 @@
 # Agent IA SRE pour Stack EFK
 
-[![CI/CD Pipeline](https://github.com/DamsDGN/efk-sre/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/efk-sre/actions/workflows/ci-cd.yml)
-[![PR Validation](https://github.com/DamsDGN/efk-sre/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/DamsDGN/efk-sre/actions/workflows/pr-validation.yml)
+[![CI/CD Pipeline](https://github.com/DamsDGN/efk-sre-agent/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/efk-sre-agent/actions/workflows/ci-cd.yml)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 Un agent d'intelligence artificielle dédié à l'analyse automatisée des métriques et logs d'une stack EFK (Elasticsearch, Fluentd, Kibana) déployée sur Kubernetes.
@@ -63,7 +62,7 @@ L'agent SRE utilise des techniques de Machine Learning pour :
 1. Cloner le repository :
 ```bash
 git clone <repository-url>
-cd efk-sre
+cd efk-sre-agent
 ```
 
 2. Configurer l'environnement de développement :
@@ -329,7 +328,7 @@ Protection contre le spam :
 ### Structure du projet
 
 ```
-efk-sre/
+efk-sre-agent/
 ├── src/                    # Code source principal
 │   ├── main.py            # Point d'entrée de l'application
 │   ├── agent.py           # Agent SRE principal
@@ -445,9 +444,9 @@ Voir le fichier [LICENSE](LICENSE) pour les détails complets.
 
 ## 📞 Support
 
-- **Issues** : [GitHub Issues](https://github.com/DamsDGN/efk-sre/issues)
-- **Documentation** : [Wiki du projet](https://github.com/DamsDGN/efk-sre/wiki)
-- **Discussions** : [GitHub Discussions](https://github.com/DamsDGN/efk-sre/discussions)
+- **Issues** : [GitHub Issues](https://github.com/DamsDGN/efk-sre-agent/issues)
+- **Documentation** : [Wiki du projet](https://github.com/DamsDGN/efk-sre-agent/wiki)
+- **Discussions** : [GitHub Discussions](https://github.com/DamsDGN/efk-sre-agent/discussions)
 - **Commercial** : Contactez l'auteur pour les licences commerciales
 
 ---

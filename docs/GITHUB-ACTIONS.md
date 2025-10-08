@@ -1,4 +1,40 @@
-# Configuration GitHub Actions - CI/CD
+# ## Pipeline CI/CD
+
+Le projet utilise un **workflow unique** GitHub Actions optimisé qui s'adapte automatiquement selon le contexte :
+
+- **`.github/workflows/ci-cd.yml`** : Workflow principal unifié
+
+## Pipeline unifié
+
+### Déclencheurs
+```yaml
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+```
+
+### Comportement adaptatif
+
+#### Pour les **Pull Requests** :
+- ✅ Tests multi-versions Python (3.11, 3.12, 3.13)
+- ✅ Validation Helm
+- ✅ **Test de build Docker** (sans publication)
+- ❌ Pas de publication sur Docker Hub
+
+#### Pour les **Push main/develop** :
+- ✅ Tests multi-versions Python
+- ✅ Validation Helm  
+- ✅ **Build et publication Docker**
+- ✅ Scan de sécurité
+- ✅ Publication sur Docker Hub
+
+#### Pour les **Tags v*** :
+- ✅ Pipeline complet
+- ✅ **Release GitHub automatique**
+- ✅ Chart Helm packagéub Actions - CI/CD
 
 ## Vue d'ensemble
 

@@ -4,9 +4,9 @@ description: Agent IA SRE pour l'analyse automatisée des métriques et logs EFK
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
-home: https://github.com/DamsDGN/efk-sre
+home: https://github.com/DamsDGN/efk-sre-agent
 sources:
-  - https://github.com/DamsDGN/efk-sre
+  - https://github.com/DamsDGN/efk-sre-agent
 maintainers:
   - name: DamsDGN
     email: contact@example.com

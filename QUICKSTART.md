@@ -37,8 +37,8 @@ sudo mv ./kind /usr/local/bin/kind
 
 ```bash
 # Clone le repo (si pas déjà fait)
-git clone https://github.com/DamsDGN/efk-sre.git
-cd efk-sre
+git clone https://github.com/DamsDGN/efk-sre-agent.git
+cd efk-sre-agent
 
 # Configuration complète en une commande
 make setup

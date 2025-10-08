@@ -54,7 +54,7 @@ To comply with this license:
 ### Contact for Commercial Licensing
 
 For commercial licensing inquiries:
-- **GitHub**: [Open an issue](https://github.com/DamsDGN/efk-sre/issues) with "Commercial License" tag
+- **GitHub**: [Open an issue](https://github.com/DamsDGN/efk-sre-agent/issues) with "Commercial License" tag
 - **Email**: [Contact information needed]
 
 ### Full License Text

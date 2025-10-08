@@ -10,7 +10,7 @@ echo "🚀 Déploiement de l'agent IA SRE EFK avec Kind"
 NAMESPACE="monitoring"
 IMAGE_NAME="efk-sre-agent"
 IMAGE_TAG="latest"
-KIND_CLUSTER_NAME="efk-sre"
+KIND_CLUSTER_NAME="efk-sre-agent"
 
 # Fonctions utilitaires
 check_kubectl() {

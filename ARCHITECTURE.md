@@ -24,7 +24,7 @@
 ## 🔧 Architecture du Projet
 
 ```
-efk-sre/
+efk-sre-agent/
 ├── 📜 Scripts de Setup
 │   ├── setup.sh              # Configuration pipx + venv
 │   ├── activate.sh            # Activation rapide

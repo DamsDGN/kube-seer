@@ -32,7 +32,7 @@
 
 #### ✅ **Cluster Kind Opérationnel**
 ```bash
-Cluster: efk-sre
+Cluster: efk-sre-agent
 Namespace: monitoring  
 Image: efk-sre-agent:latest (chargée)
 Manifestes: Tous appliqués avec succès
@@ -123,4 +123,4 @@ L'**Agent IA SRE EFK** est **100% terminé et opérationnel** !
 🚀 **L'agent est prêt à surveiller et analyser une vraie stack EFK en production !**
 
 ---
-*Rapport généré le 8 octobre 2025 - Projet efk-sre v1.0*
+*Rapport généré le 8 octobre 2025 - Projet efk-sre-agent v1.0*

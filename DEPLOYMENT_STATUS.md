@@ -34,7 +34,7 @@
 
 ### Cluster Kind
 ```bash
-✅ Cluster 'efk-sre' créé et fonctionnel
+✅ Cluster 'efk-sre-agent' créé et fonctionnel
 ✅ Namespace 'monitoring' configuré
 ✅ Image Docker construite et chargée
 ✅ Manifestes Kubernetes appliqués

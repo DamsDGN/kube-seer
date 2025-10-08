@@ -1,22 +1,21 @@
 # GitHub Actions Status
 
-![CI/CD Pipeline](https://github.com/DamsDGN/efk-sre/actions/workflows/ci-cd.yml/badge.svg)
-![PR Validation](https://github.com/DamsDGN/efk-sre/actions/workflows/pr-validation.yml/badge.svg)
+![CI/CD Pipeline](https://github.com/DamsDGN/efk-sre-agent/actions/workflows/ci-cd.yml/badge.svg)
 
 ## État du pipeline CI/CD
 
-### Workflow principal (`ci-cd.yml`)
+### Workflow unifié (`ci-cd.yml`)
 - ✅ Tests multi-version Python (3.11, 3.12, 3.13)  
 - ✅ Validation Helm
-- ✅ Build Docker multi-plateforme
-- ✅ Scan de sécurité
+- ✅ Build Docker adaptatif (test pour PR, publication pour push)
+- ✅ Scan de sécurité Trivy
 - ✅ Publication automatique sur Docker Hub
 - ✅ Releases GitHub automatiques
 
-### Workflow PR (`pr-validation.yml`)
-- ✅ Tests rapides
-- ✅ Validation du formatage
-- ✅ Test de build Docker
+### Comportement intelligent
+- **Pull Requests** → Tests + validation + build test
+- **Push main/develop** → Pipeline complet + publication  
+- **Tags v*** → Release + packaging Helm
 
 ## Images Docker disponibles
 
@@ -44,6 +43,6 @@ docker pull damsdgn/efk-sre-agent:develop
 
 ## Monitoring
 
-- [Actions GitHub](https://github.com/DamsDGN/efk-sre/actions)
+- [Actions GitHub](https://github.com/DamsDGN/efk-sre-agent/actions)
 - [Docker Hub](https://hub.docker.com/r/damsdgn/efk-sre-agent)
-- [Releases](https://github.com/DamsDGN/efk-sre/releases)
+- [Releases](https://github.com/DamsDGN/efk-sre-agent/releases)

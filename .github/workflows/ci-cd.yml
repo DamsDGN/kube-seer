@@ -5,7 +5,7 @@ on:
     branches: [ main, develop ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 env:
   REGISTRY: docker.io
@@ -91,6 +91,29 @@ jobs:
       run: |
         helm template test ./helm/efk-sre-agent/ \
           --values ./helm/efk-sre-agent/examples/values-dev.yaml > /dev/null
+
+  # Test de build Docker pour les PR (sans push)
+  build-test:
+    needs: [test, helm-lint]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 🏗️ Test Docker build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: false
+        tags: efk-sre-agent:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
   # Build et push de l'image Docker
   build-and-push:

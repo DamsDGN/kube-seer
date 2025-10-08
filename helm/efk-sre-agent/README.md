@@ -16,10 +16,10 @@ Chart Helm pour déployer l'Agent IA SRE pour l'analyse automatisée des métriq
 
 ```bash
 # Ajouter le repo (si disponible)
-helm repo add efk-sre https://damsdgn.github.io/efk-sre/
+helm repo add efk-sre-agent https://damsdgn.github.io/efk-sre-agent/
 
 # Installer avec la configuration par défaut
-helm install my-sre-agent efk-sre/efk-sre-agent
+helm install my-sre-agent efk-sre-agent/efk-sre-agent
 ```
 
 ### Installation locale (développement)
