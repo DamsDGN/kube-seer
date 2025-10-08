@@ -1,5 +1,9 @@
 # Agent IA SRE pour Stack EFK
 
+[![CI/CD Pipeline](https://github.com/DamsDGN/efk-sre/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/efk-sre/actions/workflows/ci-cd.yml)
+[![PR Validation](https://github.com/DamsDGN/efk-sre/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/DamsDGN/efk-sre/actions/workflows/pr-validation.yml)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
 Un agent d'intelligence artificielle dédié à l'analyse automatisée des métriques et logs d'une stack EFK (Elasticsearch, Fluentd, Kibana) déployée sur Kubernetes.
 
 ## 🎯 Objectifs
@@ -405,21 +409,46 @@ L'agent utilise `structlog` pour des logs JSON :
 
 ## 🤝 Contribution
 
+Les contributions sont les bienvenues ! Ce projet suit les principes open source :
+
 1. Fork le projet
 2. Créer une branche feature (`git checkout -b feature/amazing-feature`)
 3. Commit les changements (`git commit -m 'Add amazing feature'`)
 4. Push vers la branche (`git push origin feature/amazing-feature`)
 5. Ouvrir une Pull Request
 
+### Code de conduite
+- Respecter les bonnes pratiques Python (PEP 8)
+- Ajouter des tests pour les nouvelles fonctionnalités
+- Documenter le code et les APIs
+- Maintenir la compatibilité backwards
+
 ## 📄 Licence
 
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+Ce projet est sous licence **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International**.
+
+### ✅ Autorisé
+- ✅ Utilisation personnelle et éducative
+- ✅ Modification et redistribution
+- ✅ Utilisation dans des projets open source
+- ✅ Recherche et développement académique
+
+### ❌ Restrictions
+- ❌ Usage commercial sans autorisation
+- ❌ Vente du logiciel ou de services basés dessus
+- ❌ Utilisation dans des produits commerciaux
+
+### 💼 Usage commercial
+Pour un usage commercial, contactez l'auteur pour obtenir une licence commerciale.
+
+Voir le fichier [LICENSE](LICENSE) pour les détails complets.
 
 ## 📞 Support
 
-- **Issues** : Utiliser GitHub Issues
-- **Documentation** : Wiki du projet
-- **Discussions** : GitHub Discussions
+- **Issues** : [GitHub Issues](https://github.com/DamsDGN/efk-sre/issues)
+- **Documentation** : [Wiki du projet](https://github.com/DamsDGN/efk-sre/wiki)
+- **Discussions** : [GitHub Discussions](https://github.com/DamsDGN/efk-sre/discussions)
+- **Commercial** : Contactez l'auteur pour les licences commerciales
 
 ---
 

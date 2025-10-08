@@ -1,6 +1,8 @@
-# Agent IA SRE EFK - Chart Helm
+# EFK SRE Agent Helm Chart
 
-Ce chart Helm déploie l'Agent IA SRE pour l'analyse automatisée des métriques et logs de la stack EFK (Elasticsearch, Fluentd, Kibana).
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+Chart Helm pour déployer l'Agent IA SRE pour l'analyse automatisée des métriques et logs EFK sur Kubernetes.
 
 ## Prérequis
 
@@ -194,3 +196,13 @@ kubectl describe pod -l app.kubernetes.io/name=efk-sre-agent
 ## Values.yaml complet
 
 Voir le fichier [values.yaml](values.yaml) pour toutes les options de configuration disponibles.
+
+## Licence
+
+Ce chart Helm est distribué sous licence **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International**.
+
+- ✅ **Usage personnel et éducatif** autorisé
+- ❌ **Usage commercial** nécessite une licence commerciale
+- 📞 **Contact** l'auteur pour un usage commercial
+
+Voir [LICENSE](../../LICENSE) pour les détails complets.

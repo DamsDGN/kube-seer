@@ -4,7 +4,7 @@ FROM python:3.11-slim as base
 LABEL org.opencontainers.image.title="EFK SRE Agent"
 LABEL org.opencontainers.image.description="Agent IA SRE pour l'analyse automatisée des métriques et logs EFK"
 LABEL org.opencontainers.image.source="https://github.com/DamsDGN/efk-sre"
-LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.licenses="CC-BY-NC-SA-4.0"
 
 # Arguments de build (fournis par le CI/CD)
 ARG BUILDTIME
