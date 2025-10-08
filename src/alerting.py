@@ -6,7 +6,7 @@ import asyncio
 import logging
 import json
 import smtplib
-from datetime import datetime
+from datetime import datetime, UTC
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
@@ -71,7 +71,7 @@ class AlertManager:
         # Clé pour le rate limiting basée sur type + métadonnées principales
         rate_key = f"{alert.type}:{alert.metadata.get('pod_name', 'unknown')}"
         
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         
         # Vérifier le dernier envoi
         if rate_key in self.rate_limits:
@@ -241,7 +241,7 @@ Agent EFK SRE
                 'last_24h': 0
             }
         
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         last_24h = [a for a in self.alert_history 
                    if (now - a.timestamp).total_seconds() < 86400]
         

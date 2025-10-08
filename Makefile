@@ -64,6 +64,11 @@ logs: ## Affiche les logs de l'agent
 test-api: ## Teste l'API de l'agent
 	./deploy.sh test
 
+test: ## Lance tous les tests (unitaires + quick)
+	@echo "🧪 Lancement de tous les tests..."
+	make test-quick
+	@echo "✅ Tests terminés!"
+
 test-unit: ## Lance les tests unitaires
 	@if [ ! -d "$(VENV)" ]; then \
 		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \

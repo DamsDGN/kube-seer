@@ -3,7 +3,7 @@ Modèles de données pour l'agent SRE
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any, Optional
 from enum import Enum
 

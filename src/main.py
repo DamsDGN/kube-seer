@@ -6,9 +6,15 @@ import asyncio
 import logging
 import sys
 import signal
-from datetime import datetime
+from datetime import datetime, UTC
+from pathlib import Path
 
 import structlog
+
+# Ajouter le répertoire src au path Python
+src_path = Path(__file__).parent.absolute()
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 from config import Config
 from agent import SREAgent

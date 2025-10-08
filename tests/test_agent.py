@@ -6,7 +6,7 @@ import pytest
 import asyncio
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 
 # Ajouter le répertoire src au path
@@ -36,7 +36,7 @@ def sample_metrics():
             memory_usage=100 * 1024 * 1024,  # 100MB
             cpu_peak=80000000,
             memory_peak=120 * 1024 * 1024,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         ),
         Metric(
             pod_name="test-pod-2",
@@ -44,7 +44,7 @@ def sample_metrics():
             memory_usage=800 * 1024 * 1024,  # 800MB (élevé)
             cpu_peak=950000000,
             memory_peak=850 * 1024 * 1024,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
     ]
 
@@ -58,21 +58,21 @@ def sample_logs():
             namespace="default",
             log_level="INFO",
             message="Application started successfully",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         ),
         LogEntry(
             pod_name="test-pod-2",
             namespace="default",
             log_level="ERROR",
             message="Connection to database failed: timeout",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         ),
         LogEntry(
             pod_name="test-pod-2",
             namespace="default",
             log_level="CRITICAL",
             message="Out of memory: killed process",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
     ]
 
@@ -89,9 +89,14 @@ class TestConfig:
     
     def test_config_validation(self):
         """Test de la validation de la configuration"""
-        with patch.dict('os.environ', {'ANALYSIS_INTERVAL': '30'}):
-            with pytest.raises(ValueError, match="ANALYSIS_INTERVAL doit être au moins 60"):
-                Config()
+        # Test avec un interval trop bas
+        os.environ['ANALYSIS_INTERVAL'] = '30'
+        with pytest.raises(ValueError, match="ANALYSIS_INTERVAL doit être au moins 60"):
+            Config()
+        
+        # Nettoyer l'environnement pour les autres tests
+        if 'ANALYSIS_INTERVAL' in os.environ:
+            del os.environ['ANALYSIS_INTERVAL']
 
 
 class TestMetricsAnalyzer:
@@ -176,7 +181,7 @@ class TestAlertManager:
             type="test_alert",
             severity="warning",
             message="Test message",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             metadata={'pod_name': 'test-pod'}
         )
         
@@ -195,7 +200,7 @@ class TestAlertManager:
             type="test_alert",
             severity="warning",
             message="Test message",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
         
         # Ne doit pas lever d'exception
@@ -214,7 +219,7 @@ class TestAlertManager:
                 type="test_alert",
                 severity="warning" if i < 3 else "critical",
                 message=f"Test message {i}",
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(UTC)
             )
             manager.alert_history.append(alert)
         
@@ -253,7 +258,7 @@ class TestSREAgent:
                 type="cpu_anomaly",
                 severity="warning",
                 message="CPU élevé",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 metadata={'pod_name': 'test-pod-1'}
             )
         ]
@@ -263,7 +268,7 @@ class TestSREAgent:
                 type="log_error",
                 severity="critical",
                 message="Erreur application",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 metadata={'pod_name': 'test-pod-1'}
             )
         ]

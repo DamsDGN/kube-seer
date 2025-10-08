@@ -5,7 +5,7 @@ Agent IA SRE pour l'analyse des métriques et logs d'une stack EFK
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from typing import Dict, List, Optional, Any
 
 import structlog
@@ -106,7 +106,7 @@ class SREAgent:
                     type="system_error",
                     severity="critical",
                     message=f"Erreur de l'agent SRE: {e}",
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(UTC)
                 )
             )
     
@@ -149,7 +149,7 @@ class SREAgent:
                     memory_usage=bucket['avg_memory']['value'],
                     cpu_peak=bucket['max_cpu']['value'],
                     memory_peak=bucket['max_memory']['value'],
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(UTC)
                 ))
             
             return metrics
@@ -242,7 +242,7 @@ class SREAgent:
                     message=f"Problème corrélé détecté sur le pod {pod}: "
                            f"{len(pod_metric_alerts)} anomalies métriques, "
                            f"{len(pod_log_alerts)} anomalies logs",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'pod_name': pod,
                         'metric_alerts': len(pod_metric_alerts),

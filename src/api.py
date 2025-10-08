@@ -4,7 +4,7 @@ API REST pour l'agent SRE
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any
 
 from fastapi import FastAPI, HTTPException, Depends
@@ -36,7 +36,7 @@ app.add_middleware(
 # Variables globales
 agent: SREAgent = None
 config: Config = None
-start_time: datetime = datetime.utcnow()
+start_time: datetime = datetime.now(UTC)
 
 
 async def get_agent() -> SREAgent:
@@ -55,7 +55,7 @@ async def startup_event():
         config = Config()
         agent = SREAgent(config)
         await agent.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
         
         logger.info("API SRE Agent démarrée")
         
@@ -82,8 +82,8 @@ async def health_check():
     """Point de santé de l'API"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "uptime": (datetime.utcnow() - start_time).total_seconds()
+        "timestamp": datetime.now(UTC).isoformat(),
+        "uptime": (datetime.now(UTC) - start_time).total_seconds()
     }
 
 
@@ -104,14 +104,14 @@ async def get_status(agent: SREAgent = Depends(get_agent)) -> SystemHealth:
         # Statistiques des alertes
         alert_stats = agent.alert_manager.get_alert_stats()
         
-        uptime = (datetime.utcnow() - start_time).total_seconds()
+        uptime = (datetime.now(UTC) - start_time).total_seconds()
         
         return SystemHealth(
             elasticsearch_status=es_status,
             kubernetes_status=k8s_status,
             agent_uptime=uptime,
             alerts_count_24h=alert_stats['last_24h'],
-            last_analysis=datetime.utcnow()
+            last_analysis=datetime.now(UTC)
         )
         
     except Exception as e:
@@ -156,7 +156,7 @@ async def manual_analysis(agent: SREAgent = Depends(get_agent)):
         return {
             "status": "success",
             "message": "Analyse manuelle déclenchée",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         
     except Exception as e:
@@ -172,7 +172,7 @@ async def get_pod_metrics(agent: SREAgent = Depends(get_agent)):
         return {
             "metrics": [metric.to_dict() for metric in metrics],
             "count": len(metrics),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         
     except Exception as e:
@@ -188,7 +188,7 @@ async def get_recent_logs(agent: SREAgent = Depends(get_agent)):
         return {
             "logs": [log.to_dict() for log in logs],
             "count": len(logs),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         
     except Exception as e:
@@ -234,7 +234,7 @@ async def retrain_models(agent: SREAgent = Depends(get_agent)):
             "message": "Modèles réentraînés",
             "metrics_count": len(metrics),
             "logs_count": len(logs),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         
     except Exception as e:

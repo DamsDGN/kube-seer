@@ -6,7 +6,7 @@ import logging
 import re
 import pickle
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from typing import List, Dict, Any, Set
 from collections import Counter
 
@@ -118,7 +118,7 @@ class LogAnalyzer:
                 type="log_analysis_error",
                 severity="warning",
                 message=f"Erreur d'analyse des logs: {e}",
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(UTC)
             ))
         
         return alerts
@@ -152,7 +152,7 @@ class LogAnalyzer:
                     severity=severity,
                     message=f"Erreur {error_type} détectée: {len(matched_logs)} occurrences "
                            f"sur {len(pods)} pod(s)",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'error_type': error_type,
                         'occurrences': len(matched_logs),
@@ -189,7 +189,7 @@ class LogAnalyzer:
                     type="log_error",
                     severity=severity,
                     message=f"Pic d'erreurs détecté sur {pod_name}: {count} erreurs/minute",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'pod_name': pod_name,
                         'error_count': count,
@@ -234,7 +234,7 @@ class LogAnalyzer:
                         severity="warning",
                         message=f"Cluster d'erreurs similaires détecté: {count} occurrences "
                                f"(ex: {sample_message}...)",
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                         metadata={
                             'cluster_id': int(cluster_id),
                             'cluster_size': count,
@@ -267,7 +267,7 @@ class LogAnalyzer:
                 type="log_error",
                 severity="info",
                 message=f"Nouveau type d'erreur détecté: {error_signature}",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 metadata={
                     'error_signature': error_signature,
                     'analysis_type': 'new_error'

@@ -5,7 +5,7 @@ Analyseur de métriques avec détection d'anomalies par ML
 import logging
 import pickle
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from typing import List, Dict, Any, Optional
 
 import numpy as np
@@ -125,7 +125,7 @@ class MetricsAnalyzer:
                 type="analysis_error",
                 severity="warning",
                 message=f"Erreur d'analyse des métriques: {e}",
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(UTC)
             ))
         
         return alerts
@@ -149,7 +149,7 @@ class MetricsAnalyzer:
                     type="cpu_anomaly",
                     severity="critical",
                     message=f"CPU critique sur {pod_name}: {cpu_percent:.1f}%",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'pod_name': pod_name,
                         'cpu_usage': cpu_percent,
@@ -162,7 +162,7 @@ class MetricsAnalyzer:
                     type="cpu_anomaly",
                     severity="warning",
                     message=f"CPU élevé sur {pod_name}: {cpu_percent:.1f}%",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'pod_name': pod_name,
                         'cpu_usage': cpu_percent,
@@ -177,7 +177,7 @@ class MetricsAnalyzer:
                     type="memory_anomaly",
                     severity="critical",
                     message=f"Mémoire critique sur {pod_name}: {memory_percent:.1f}%",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'pod_name': pod_name,
                         'memory_usage': memory_percent,
@@ -190,7 +190,7 @@ class MetricsAnalyzer:
                     type="memory_anomaly",
                     severity="warning",
                     message=f"Mémoire élevée sur {pod_name}: {memory_percent:.1f}%",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     metadata={
                         'pod_name': pod_name,
                         'memory_usage': memory_percent,
@@ -223,7 +223,7 @@ class MetricsAnalyzer:
                         severity="warning" if score > -0.2 else "critical",
                         message=f"Anomalie ML détectée sur {row['pod_name']} "
                                f"(score: {score:.3f})",
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                         metadata={
                             'pod_name': row['pod_name'],
                             'anomaly_score': float(score),
