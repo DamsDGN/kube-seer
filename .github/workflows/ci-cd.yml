@@ -131,13 +131,7 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha
 
     - name: 🐳 Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -164,21 +158,12 @@ jobs:
           VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
           REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
 
-    - name: ⏳ Wait for image propagation
-      run: sleep 30
-
-    - name: � Debug image tags
-      run: |
-        echo "Generated tags:"
-        echo '${{ steps.meta.outputs.tags }}' | jq -r '.[]'
-        echo "First tag for scanning: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}"
-
     - name: �🔍 Scan image for vulnerabilities
       uses: aquasecurity/trivy-action@master
       id: scan
       continue-on-error: true
       with:
-        image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        image-ref: ${{ steps.meta.outputs.tags }}
         format: 'sarif'
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH'

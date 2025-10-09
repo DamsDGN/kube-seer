@@ -20,6 +20,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100 \
     PATH="/opt/venv/bin:$PATH"
 
 # Étape de build des dépendances
@@ -38,10 +39,24 @@ RUN apt-get update && \
 # Utiliser le venv pour les installations suivantes
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copier et installer les dépendances Python
-COPY requirements.txt .
+# Copier et installer les dépendances Python avec optimisations
+COPY requirements-build.txt requirements.txt ./
+# Installer d'abord les dépendances lourdes en parallèle
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt && \
+    # Installer les dépendances pré-compilées d'abord
+    pip install --no-cache-dir \
+        --disable-pip-version-check \
+        --no-compile \
+        --prefer-binary \
+        --only-binary=all \
+        numpy pandas scikit-learn && \
+    # Puis installer le reste
+    pip install --no-cache-dir \
+        --disable-pip-version-check \
+        --no-compile \
+        --prefer-binary \
+        --only-binary=all \
+        -r requirements-build.txt && \
     find /opt/venv -name "*.pyc" -delete && \
     find /opt/venv -name "__pycache__" -type d -exec rm -rf {} + || true
 
