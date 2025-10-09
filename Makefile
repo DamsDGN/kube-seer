@@ -126,7 +126,7 @@ lint: ## Vérifie le code avec flake8 (via pipx)
 
 format: ## Formate le code avec black (via pipx)
 	@if command -v black >/dev/null 2>&1; then \
-		black src/ tests/; \
+		black src/ tests/ --line-length=100; \
 	else \
 		echo "❌ black non installé. Lancez: make setup-tools"; \
 	fi

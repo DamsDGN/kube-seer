@@ -5,15 +5,14 @@ Analyseur LLM pour l'amélioration de l'interprétation des événements
 import json
 import logging
 from typing import List, Dict, Any, Optional
-import aiohttp
 
 from .config import Config
 from .models import Alert, LogEntry, Metric
+
 try:
     import aiohttp
 except ImportError:
-    aiohttp = None
-from .models import Alert, LogEntry, Metric
+    aiohttp = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +336,12 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
 
     async def _call_openai(self, prompt: str) -> Optional[str]:
         """Appelle l'API OpenAI"""
+        if aiohttp is None:
+            logger.error(
+                "aiohttp n'est pas installé; impossible d'appeler l'API OpenAI"
+            )
+            return None
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -373,6 +378,12 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
 
     async def _call_anthropic(self, prompt: str) -> Optional[str]:
         """Appelle l'API Anthropic Claude"""
+        if aiohttp is None:
+            logger.error(
+                "aiohttp n'est pas installé; impossible d'appeler l'API Anthropic"
+            )
+            return None
+
         headers = {
             "x-api-key": self.api_key,
             "Content-Type": "application/json",
@@ -404,6 +415,12 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
 
     async def _call_ollama(self, prompt: str) -> Optional[str]:
         """Appelle une instance Ollama locale"""
+        if aiohttp is None:
+            logger.error(
+                "aiohttp n'est pas installé; impossible d'appeler l'API Ollama"
+            )
+            return None
+
         data = {
             "model": self.model,
             "prompt": prompt,
