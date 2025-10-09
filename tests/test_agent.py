@@ -22,7 +22,6 @@ from agent import SREAgent  # noqa: E402
 @pytest.fixture
 def config():
     """Configuration de test"""
-    from unittest.mock import Mock
     mock_config = Mock()
     mock_config.elasticsearch_url = "http://localhost:9200"
     mock_config.elasticsearch_user = "test"
@@ -268,16 +267,13 @@ class TestSREAgent:
             mock_es_instance = mock_es_class.return_value
             mock_es_instance.ping.return_value = True
 
-            # Mock de l'instance Kubernetes
-            mock_k8s_instance = mock_k8s_class.return_value
-
             agent = SREAgent(config)
             await agent.initialize()
 
             # Vérifier que Elasticsearch a été instancié
             mock_es_class.assert_called_once()
             mock_es_instance.ping.assert_called_once()
-            
+
             # Vérifier que Kubernetes a été instancié
             mock_k8s_class.assert_called_once()
 
@@ -325,7 +321,9 @@ async def test_integration_analysis_cycle(config):
     """Test d'intégration du cycle d'analyse complet"""
     with patch("agent.Elasticsearch") as mock_es_class, patch(
         "agent.config.load_incluster_config"
-    ), patch("agent.client.CoreV1Api") as mock_k8s_class:
+    ), patch(
+        "agent.client.CoreV1Api"
+    ):  # Mock K8s sans variable car pas utilisé
 
         # Configuration des mocks
         mock_es_instance = mock_es_class.return_value
