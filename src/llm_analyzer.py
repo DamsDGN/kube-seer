@@ -7,7 +7,10 @@ import logging
 from typing import List, Dict, Any, Optional
 import aiohttp
 
-from .config import Config
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
 from .models import Alert, LogEntry, Metric
 
 logger = logging.getLogger(__name__)
