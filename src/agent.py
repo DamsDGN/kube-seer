@@ -10,12 +10,12 @@ import structlog
 from elasticsearch import Elasticsearch
 from kubernetes import client, config
 
-from config import Config
-from metrics_analyzer import MetricsAnalyzer
-from log_analyzer import LogAnalyzer
-from alerting import AlertManager
-from llm_analyzer import LLMAnalyzer
-from models import Alert, Metric, LogEntry
+from .config import Config
+from .metrics_analyzer import MetricsAnalyzer
+from .log_analyzer import LogAnalyzer
+from .alerting import AlertManager
+from .llm_analyzer import LLMAnalyzer
+from .models import Alert, Metric, LogEntry
 
 logger = structlog.get_logger()
 
@@ -281,14 +281,16 @@ class SREAgent:
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour des modèles: {e}")
 
-    async def enhance_alert_with_llm(self, alert: Alert, context: Dict = None) -> Dict:
+    async def enhance_alert_with_llm(
+        self, alert: Alert, context: Optional[Dict] = None
+    ) -> Dict:
         """
         Améliore une alerte avec l'analyse LLM
-        
+
         Args:
             alert: L'alerte à analyser
             context: Contexte additionnel (métriques, logs, etc.)
-            
+
         Returns:
             Analyse enrichie de l'alerte
         """
@@ -299,16 +301,16 @@ class SREAgent:
             return {
                 "enhanced": False,
                 "original_message": alert.message,
-                "error": str(e)
+                "error": str(e),
             }
 
     async def get_troubleshooting_guidance(self, alert: Alert) -> Dict:
         """
         Obtient un guide de dépannage pour une alerte
-        
+
         Args:
             alert: L'alerte pour laquelle obtenir un guide
-            
+
         Returns:
             Guide de dépannage structuré
         """
@@ -316,43 +318,38 @@ class SREAgent:
             # Collecter du contexte récent
             recent_metrics = await self.collect_metrics()
             recent_logs = await self.collect_logs()
-            
+
             # Limiter à du contexte récent
             recent_metrics = recent_metrics[-10:] if recent_metrics else []
             recent_logs = recent_logs[-20:] if recent_logs else []
-            
+
             return await self.llm_analyzer.provide_troubleshooting_guidance(
                 alert, recent_metrics, recent_logs
             )
         except Exception as e:
             logger.error(f"Erreur lors de la génération du guide de dépannage: {e}")
-            return {
-                "enhanced": False,
-                "guidance": f"Erreur: {str(e)}"
-            }
+            return {"enhanced": False, "guidance": f"Erreur: {str(e)}"}
 
-    async def analyze_log_patterns_with_llm(self, logs: List[LogEntry] = None) -> Dict:
+    async def analyze_log_patterns_with_llm(
+        self, logs: Optional[List[LogEntry]] = None
+    ) -> Dict:
         """
         Analyse les patterns de logs avec le LLM
-        
+
         Args:
             logs: Liste de logs à analyser (collecte automatique si None)
-            
+
         Returns:
             Analyse des patterns détectés
         """
         try:
             if logs is None:
                 logs = await self.collect_logs()
-            
+
             return await self.llm_analyzer.analyze_log_patterns(logs)
         except Exception as e:
             logger.error(f"Erreur lors de l'analyse LLM des logs: {e}")
-            return {
-                "enhanced": False,
-                "patterns": [],
-                "error": str(e)
-            }
+            return {"enhanced": False, "patterns": [], "error": str(e)}
 
     async def start(self):
         """Démarre l'agent SRE"""

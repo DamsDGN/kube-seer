@@ -1,10 +1,13 @@
-.PHONY: help install build deploy test clean
+SHELL := /bin/bash
+
+.PHONY: help install build load-image deploy test clean
 
 # Variables
 PYTHON := python3
 VENV := .venv
 CLUSTER_NAME := efk-sre-agent
-ACTIVATE := source $(VENV)/bin/activate &&
+VENV_PIP := $(VENV)/bin/pip
+VENV_PYTHON := $(VENV)/bin/python
 
 help: ## Affiche cette aide
 	@echo "🤖 Agent IA SRE EFK - Commandes disponibles:"
@@ -32,12 +35,12 @@ install: ## Installe les dépendances dans le venv (legacy)
 		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \
 		exit 1; \
 	fi
-	$(ACTIVATE) pip install --upgrade pip
-	$(ACTIVATE) pip install -r requirements.txt
+	$(VENV_PIP) install --upgrade pip
+	$(VENV_PIP) install -r requirements.txt
 
 install-dev: ## Installe les dépendances de développement
-	$(VENV)/bin/pip install -r requirements.txt
-	$(VENV)/bin/pip install pytest-xdist ipython jupyter
+	$(VENV_PIP) install -r requirements.txt
+	$(VENV_PIP) install pytest-xdist ipython jupyter
 
 check-kind: ## Vérifie que Kind est installé
 	@which kind > /dev/null || (echo "❌ Kind n'est pas installé. Voir QUICKSTART.md" && exit 1)
@@ -48,6 +51,9 @@ setup-kind: check-kind ## Configure uniquement le cluster Kind
 
 build: ## Build l'image Docker
 	./deploy.sh build
+
+load-image: ## Charge l'image Docker dans Kind
+	./deploy.sh load-image
 
 deploy: ## Déploie l'agent complet (cluster + app)
 	./deploy.sh deploy
@@ -99,14 +105,14 @@ test-unit: ## Lance les tests unitaires
 		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \
 		exit 1; \
 	fi
-	$(ACTIVATE) pytest tests/ -v
+	$(VENV_PYTHON) -m pytest tests/ -v
 
 test-unit-cov: ## Lance les tests avec couverture
 	@if [ ! -d "$(VENV)" ]; then \
 		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \
 		exit 1; \
 	fi
-	$(ACTIVATE) pytest tests/ --cov=src --cov-report=html --cov-report=term
+	$(VENV_PYTHON) -m pytest tests/ --cov=src --cov-report=html --cov-report=term
 
 test-quick: ## Tests rapides sans dépendances externes
 	./test.sh

@@ -38,14 +38,14 @@ check_kind() {
 
 setup_kind_cluster() {
     echo "🔧 Configuration du cluster Kind"
-    
+
     # Vérifier si le cluster existe déjà
     if kind get clusters | grep -q "^$KIND_CLUSTER_NAME$"; then
         echo "✅ Cluster Kind '$KIND_CLUSTER_NAME' existe déjà"
         kubectl cluster-info --context kind-$KIND_CLUSTER_NAME
     else
         echo "🏗️  Création du cluster Kind '$KIND_CLUSTER_NAME'"
-        
+
         # Créer la configuration Kind avec port mapping pour l'API
         cat > kind-config.yaml << EOF
 kind: Cluster
@@ -64,11 +64,11 @@ nodes:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
 EOF
-        
+
         kind create cluster --config kind-config.yaml
         kubectl cluster-info --context kind-$KIND_CLUSTER_NAME
     fi
-    
+
     # S'assurer que le contexte est correct
     kubectl config use-context kind-$KIND_CLUSTER_NAME
 }
@@ -79,22 +79,23 @@ create_namespace() {
 }
 
 build_image() {
-    echo "🏗️  Build de l'image Docker pour Kind"
+    echo "🏗️  Build de l'image Docker"
     docker build -t $IMAGE_NAME:$IMAGE_TAG .
-    
-    # Charger l'image dans Kind
-    echo "� Chargement de l'image dans le cluster Kind"
+}
+
+load_image_to_kind() {
+    echo "📦 Chargement de l'image dans le cluster Kind"
     kind load docker-image $IMAGE_NAME:$IMAGE_TAG --name $KIND_CLUSTER_NAME
 }
 
 configure_secrets() {
     echo "🔐 Configuration des secrets"
-    
+
     # Vérifier si le fichier .env existe
     if [ ! -f .env ]; then
         echo "⚠️  Fichier .env non trouvé"
         echo "📝 Création d'un fichier .env minimal pour les tests"
-        
+
         cat > .env << EOF
 # Configuration pour tests locaux avec Kind
 ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -117,10 +118,10 @@ EOF
         echo "✅ Fichier .env créé avec des valeurs par défaut"
         echo "⚠️  ATTENTION: Modifiez .env avec vos vraies valeurs avant la production!"
     fi
-    
+
     # Charger les variables d'environnement
     source .env
-    
+
     # Créer ou mettre à jour le secret avec des valeurs par défaut sécurisées
     kubectl create secret generic efk-sre-agent-secrets \
         --from-literal=ELASTICSEARCH_PASSWORD="${ELASTICSEARCH_PASSWORD:-changeme}" \
@@ -186,8 +187,11 @@ case "${1:-deploy}" in
         ;;
     "build")
         check_docker
-        check_kind
         build_image
+        ;;
+    "load-image")
+        check_kind
+        load_image_to_kind
         ;;
     "deploy")
         check_kubectl
@@ -197,6 +201,7 @@ case "${1:-deploy}" in
         create_namespace
         configure_secrets
         build_image
+        load_image_to_kind
         deploy_agent
         wait_for_deployment
         show_status
@@ -208,6 +213,7 @@ case "${1:-deploy}" in
         create_namespace
         configure_secrets
         build_image
+        load_image_to_kind
         deploy_agent
         wait_for_deployment
         show_status
@@ -217,6 +223,7 @@ case "${1:-deploy}" in
         check_docker
         check_kind
         build_image
+        load_image_to_kind
         kubectl set image deployment/efk-sre-agent efk-sre-agent=$IMAGE_NAME:$IMAGE_TAG -n $NAMESPACE
         wait_for_deployment
         show_status
@@ -242,21 +249,22 @@ case "${1:-deploy}" in
         kubectl port-forward -n $NAMESPACE svc/efk-sre-agent 8080:8080 &
         PORT_FORWARD_PID=$!
         sleep 5
-        
+
         echo "Test de santé:"
         curl -s http://localhost:8080/health | jq . || curl -s http://localhost:8080/health
-        
+
         echo -e "\nTest de statut:"
         curl -s http://localhost:8080/status | jq . || curl -s http://localhost:8080/status
-        
+
         kill $PORT_FORWARD_PID
         ;;
     *)
-        echo "Usage: $0 {setup-kind|build|deploy|deploy-quick|update|status|logs|cleanup|cleanup-kind|test}"
+        echo "Usage: $0 {setup-kind|build|load-image|deploy|deploy-quick|update|status|logs|cleanup|cleanup-kind|test}"
         echo ""
         echo "Commandes:"
         echo "  setup-kind    - Configure uniquement le cluster Kind"
-        echo "  build         - Build l'image Docker et la charge dans Kind"
+        echo "  build         - Build l'image Docker uniquement"
+        echo "  load-image    - Charge l'image Docker dans Kind"
         echo "  deploy        - Déploiement complet (cluster + app)"
         echo "  deploy-quick  - Déploiement rapide (sans recréer le cluster)"
         echo "  update        - Mise à jour du déploiement existant"

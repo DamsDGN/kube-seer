@@ -9,11 +9,11 @@ import smtplib
 from datetime import datetime, UTC
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List, Dict
+from typing import List, Dict, Any
 import aiohttp
 
-from config import Config
-from models import Alert
+from .config import Config
+from .models import Alert
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,7 @@ class AlertManager:
             if len(self.alert_history) > 1000:
                 self.alert_history = self.alert_history[-1000:]
 
-            logger.info(
-                f"Envoi d'alerte: {alert.type} - {alert.severity} - {alert.message}"
-            )
+            logger.info(f"Envoi d'alerte: {alert.type} - {alert.severity} - {alert.message}")
 
             # Envoyer via tous les canaux configurés
             tasks = []
@@ -89,9 +87,7 @@ class AlertManager:
 
         # Nettoyer les anciens rate limits (plus de 1 heure)
         cutoff = now.timestamp() - 3600
-        self.rate_limits = {
-            k: v for k, v in self.rate_limits.items() if v.timestamp() > cutoff
-        }
+        self.rate_limits = {k: v for k, v in self.rate_limits.items() if v.timestamp() > cutoff}
 
         return False
 
@@ -133,7 +129,7 @@ class AlertManager:
             color = color_map.get(alert.severity, "#808080")
 
             # Construire le message Slack
-            attachments = [
+            attachments: List[Dict[str, Any]] = [
                 {
                     "color": color,
                     "title": f"🚨 Alerte {alert.severity.upper()}",
@@ -199,9 +195,7 @@ class AlertManager:
             msg = MIMEMultipart()
             msg["From"] = self.config.email_username
             msg["To"] = self.config.email_recipients
-            msg["Subject"] = (
-                f"🚨 EFK SRE Alert - {alert.severity.upper()} - {alert.type}"
-            )
+            msg["Subject"] = f"🚨 EFK SRE Alert - {alert.severity.upper()} - {alert.type}"
 
             # Corps du message
             body = f"""
@@ -222,9 +216,7 @@ Agent EFK SRE
             msg.attach(MIMEText(body, "plain"))
 
             # Envoyer l'email
-            await asyncio.get_event_loop().run_in_executor(
-                None, self._send_email_sync, msg
-            )
+            await asyncio.get_event_loop().run_in_executor(None, self._send_email_sync, msg)
 
             logger.debug("Email envoyé avec succès")
 
@@ -233,9 +225,7 @@ Agent EFK SRE
 
     def _send_email_sync(self, msg):
         """Envoie l'email de manière synchrone"""
-        server = smtplib.SMTP(
-            self.config.email_smtp_server, self.config.email_smtp_port
-        )
+        server = smtplib.SMTP(self.config.email_smtp_server, self.config.email_smtp_port)
         server.starttls()
         server.login(self.config.email_username, self.config.email_password)
         server.send_message(msg)
@@ -247,9 +237,7 @@ Agent EFK SRE
             return {"total_alerts": 0, "by_severity": {}, "by_type": {}, "last_24h": 0}
 
         now = datetime.now(UTC)
-        last_24h = [
-            a for a in self.alert_history if (now - a.timestamp).total_seconds() < 86400
-        ]
+        last_24h = [a for a in self.alert_history if (now - a.timestamp).total_seconds() < 86400]
 
         severity_counts: Dict[str, int] = {}
         type_counts: Dict[str, int] = {}
@@ -267,6 +255,4 @@ Agent EFK SRE
 
     def get_recent_alerts(self, limit: int = 50) -> List[Alert]:
         """Retourne les alertes récentes"""
-        return sorted(self.alert_history, key=lambda x: x.timestamp, reverse=True)[
-            :limit
-        ]
+        return sorted(self.alert_history, key=lambda x: x.timestamp, reverse=True)[:limit]

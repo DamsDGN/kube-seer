@@ -4,7 +4,9 @@ API REST pour l'agent SRE
 
 import asyncio
 import logging
+import os
 from datetime import datetime, UTC
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,9 +14,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
 
-from agent import SREAgent
-from config import Config
-from models import SystemHealth
+from .agent import SREAgent
+from .config import Config
+from .models import SystemHealth
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +36,13 @@ app.add_middleware(
 )
 
 # Servir les fichiers statiques (dashboard web)
-import os
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Variables globales
-agent: SREAgent = None
-config: Config = None
+agent: Optional[SREAgent] = None
+config: Optional[Config] = None
 start_time: datetime = datetime.now(UTC)
 
 
@@ -108,12 +109,17 @@ async def get_status(agent: SREAgent = Depends(get_agent)) -> SystemHealth:
     """Retourne le statut complet du système"""
     try:
         # Vérifier la connexion Elasticsearch
-        es_status = "healthy" if agent.es_client.ping() else "unhealthy"
+        es_status = (
+            "healthy" if agent.es_client and agent.es_client.ping() else "unhealthy"
+        )
 
         # Vérifier Kubernetes
         try:
-            agent.k8s_client.list_namespace()
-            k8s_status = "healthy"
+            if agent.k8s_client:
+                agent.k8s_client.list_namespace()
+                k8s_status = "healthy"
+            else:
+                k8s_status = "unhealthy"
         except Exception:
             k8s_status = "unhealthy"
 
@@ -260,7 +266,7 @@ async def get_llm_status():
             "enabled": config.llm_enabled,
             "provider": config.llm_provider if config.llm_enabled else None,
             "model": config.llm_model if config.llm_enabled else None,
-            "status": "active" if config.llm_enabled else "disabled"
+            "status": "active" if config.llm_enabled else "disabled",
         }
     except Exception as e:
         logger.error(f"Erreur lors de la vérification du statut LLM: {e}")
@@ -277,24 +283,24 @@ async def enhance_alert(alert_id: str, agent: SREAgent = Depends(get_agent)):
             if str(id(a)) == alert_id:  # Utilisation temporaire de l'ID d'objet
                 alert = a
                 break
-        
+
         if not alert:
             raise HTTPException(status_code=404, detail="Alerte non trouvée")
-        
+
         # Construire le contexte
         context = {}
-        if hasattr(alert, 'metadata') and alert.metadata:
+        if hasattr(alert, "metadata") and alert.metadata:
             context.update(alert.metadata)
-        
+
         # Améliorer avec le LLM
         enhanced_analysis = await agent.enhance_alert_with_llm(alert, context)
-        
+
         return {
             "alert_id": alert_id,
             "analysis": enhanced_analysis,
-            "timestamp": datetime.now(UTC).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -312,19 +318,19 @@ async def get_troubleshooting(alert_id: str, agent: SREAgent = Depends(get_agent
             if str(id(a)) == alert_id:
                 alert = a
                 break
-        
+
         if not alert:
             raise HTTPException(status_code=404, detail="Alerte non trouvée")
-        
+
         # Générer le guide de dépannage
         guidance = await agent.get_troubleshooting_guidance(alert)
-        
+
         return {
             "alert_id": alert_id,
             "troubleshooting": guidance,
-            "timestamp": datetime.now(UTC).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -338,20 +344,20 @@ async def analyze_log_patterns(limit: int = 50, agent: SREAgent = Depends(get_ag
     try:
         # Collecter les logs récents
         logs = await agent.collect_logs()
-        
+
         # Limiter le nombre de logs
         if limit and len(logs) > limit:
             logs = logs[-limit:]
-        
+
         # Analyser avec le LLM
         patterns_analysis = await agent.analyze_log_patterns_with_llm(logs)
-        
+
         return {
             "patterns_analysis": patterns_analysis,
             "logs_analyzed": len(logs),
-            "timestamp": datetime.now(UTC).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Erreur lors de l'analyse des patterns: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -361,40 +367,50 @@ async def analyze_log_patterns(limit: int = 50, agent: SREAgent = Depends(get_ag
 async def get_enhanced_alerts(limit: int = 10, agent: SREAgent = Depends(get_agent)):
     """Retourne les alertes récentes avec analyse LLM enrichie"""
     try:
-        recent_alerts = agent.alert_manager.alert_history[-limit:] if agent.alert_manager.alert_history else []
+        recent_alerts = (
+            agent.alert_manager.alert_history[-limit:]
+            if agent.alert_manager.alert_history
+            else []
+        )
         enhanced_alerts = []
-        
+
         for alert in recent_alerts:
             try:
                 # Construire le contexte basique
                 context = {}
-                if hasattr(alert, 'metadata') and alert.metadata:
+                if hasattr(alert, "metadata") and alert.metadata:
                     context.update(alert.metadata)
-                
+
                 # Améliorer avec le LLM
                 enhanced_analysis = await agent.enhance_alert_with_llm(alert, context)
-                
-                enhanced_alerts.append({
-                    "alert": alert.to_dict(),
-                    "enhanced_analysis": enhanced_analysis,
-                    "alert_id": str(id(alert))
-                })
+
+                enhanced_alerts.append(
+                    {
+                        "alert": alert.to_dict(),
+                        "enhanced_analysis": enhanced_analysis,
+                        "alert_id": str(id(alert)),
+                    }
+                )
             except Exception as e:
-                logger.warning(f"Erreur lors de l'amélioration de l'alerte {alert.type}: {e}")
+                logger.warning(
+                    f"Erreur lors de l'amélioration de l'alerte {alert.type}: {e}"
+                )
                 # Ajouter l'alerte sans amélioration
-                enhanced_alerts.append({
-                    "alert": alert.to_dict(),
-                    "enhanced_analysis": {"enhanced": False, "error": str(e)},
-                    "alert_id": str(id(alert))
-                })
-        
+                enhanced_alerts.append(
+                    {
+                        "alert": alert.to_dict(),
+                        "enhanced_analysis": {"enhanced": False, "error": str(e)},
+                        "alert_id": str(id(alert)),
+                    }
+                )
+
         return {
             "alerts": enhanced_alerts,
             "total": len(enhanced_alerts),
-            "llm_enabled": config.llm_enabled,
-            "timestamp": datetime.now(UTC).isoformat()
+            "llm_enabled": config.llm_enabled if config else False,
+            "timestamp": datetime.now(UTC).isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des alertes enrichies: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -13,8 +13,8 @@ import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 
-from config import Config
-from models import Metric, Alert
+from .config import Config
+from .models import Metric, Alert
 
 logger = logging.getLogger(__name__)
 

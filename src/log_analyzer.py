@@ -13,8 +13,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import RandomForestClassifier
 
-from config import Config
-from models import LogEntry, Alert
+from .config import Config
+from .models import LogEntry, Alert
 
 logger = logging.getLogger(__name__)
 

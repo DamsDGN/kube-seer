@@ -62,7 +62,9 @@ class Config:
 
         # Configuration LLM (optionnel)
         self.llm_enabled = os.getenv("LLM_ENABLED", "false").lower() == "true"
-        self.llm_provider = os.getenv("LLM_PROVIDER", "openai")  # openai, anthropic, ollama
+        self.llm_provider = os.getenv(
+            "LLM_PROVIDER", "openai"
+        )  # openai, anthropic, ollama
         self.llm_api_key = os.getenv("LLM_API_KEY", "")
         self.llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
         self.llm_base_url = os.getenv("LLM_BASE_URL", "")  # Pour Ollama ou autres APIs

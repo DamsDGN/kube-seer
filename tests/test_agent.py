@@ -8,15 +8,15 @@ import os
 from datetime import datetime, UTC
 from unittest.mock import patch, Mock
 
-# Ajouter le répertoire src au path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+# Ajouter le répertoire parent au path pour accéder au package src
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from config import Config  # noqa: E402
-from models import Metric, LogEntry, Alert  # noqa: E402
-from metrics_analyzer import MetricsAnalyzer  # noqa: E402
-from log_analyzer import LogAnalyzer  # noqa: E402
-from alerting import AlertManager  # noqa: E402
-from agent import SREAgent  # noqa: E402
+from src.config import Config  # noqa: E402
+from src.models import Metric, LogEntry, Alert  # noqa: E402
+from src.metrics_analyzer import MetricsAnalyzer  # noqa: E402
+from src.log_analyzer import LogAnalyzer  # noqa: E402
+from src.alerting import AlertManager  # noqa: E402
+from src.agent import SREAgent  # noqa: E402
 
 
 @pytest.fixture
@@ -259,12 +259,11 @@ class TestSREAgent:
     @pytest.mark.asyncio
     async def test_agent_initialization(self, config):
         """Test d'initialisation de l'agent"""
-        with patch("agent.Elasticsearch") as mock_es_class, patch(
-            "agent.config.load_incluster_config"
-        ), patch("agent.config.load_kube_config"), patch(
-            "agent.client.CoreV1Api"
+        with patch("src.agent.Elasticsearch") as mock_es_class, patch(
+            "src.agent.config.load_incluster_config"
+        ), patch("src.agent.config.load_kube_config"), patch(
+            "src.agent.client.CoreV1Api"
         ) as mock_k8s_class:
-
             # Mock de l'instance Elasticsearch
             mock_es_instance = mock_es_class.return_value
             mock_es_instance.ping.return_value = True
@@ -321,12 +320,11 @@ class TestSREAgent:
 @pytest.mark.asyncio
 async def test_integration_analysis_cycle(config):
     """Test d'intégration du cycle d'analyse complet"""
-    with patch("agent.Elasticsearch") as mock_es_class, patch(
-        "agent.config.load_incluster_config"
-    ), patch("agent.config.load_kube_config"), patch(
-        "agent.client.CoreV1Api"
+    with patch("src.agent.Elasticsearch") as mock_es_class, patch(
+        "src.agent.config.load_incluster_config"
+    ), patch("src.agent.config.load_kube_config"), patch(
+        "src.agent.client.CoreV1Api"
     ):  # Mock K8s sans variable car pas utilisé
-
         # Configuration des mocks
         mock_es_instance = mock_es_class.return_value
         mock_es_instance.ping.return_value = True
@@ -344,7 +342,6 @@ async def test_integration_analysis_cycle(config):
         ) as mock_collect_metrics, patch.object(
             agent, "collect_logs"
         ) as mock_collect_logs:
-
             mock_collect_metrics.return_value = []
             mock_collect_logs.return_value = []
 

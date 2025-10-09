@@ -4,13 +4,17 @@ repos:
     hooks:
       - id: black
         language_version: python3
+        args:
+          - --line-length=100
         files: ^(src/|tests/).*\.py$
 
   - repo: https://github.com/pycqa/flake8
     rev: '6.1.0'
     hooks:
       - id: flake8
-        args: [--max-line-length=100, --ignore=E203,W503]
+        args:
+          - --max-line-length=100
+          - "--ignore=E203,W503"
         files: ^(src/|tests/).*\.py$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -26,6 +30,6 @@ repos:
     hooks:
       - id: check-secrets
         name: Check for secrets
-        entry: bash -c 'if git diff --cached --name-only | xargs grep -l "password\|token\|secret\|key" | grep -v "example\|changeme\|fake"; then echo "❌ Secrets détectés!"; exit 1; fi'
+        entry: bash -c 'if git diff --cached | grep -E "(password|token|secret|key)\s*=\s*['\''\"]\w+" | grep -v "changeme\|example\|fake\|YOUR_"; then echo "❌ Potential secrets détectés!"; exit 1; fi'
         language: system
         pass_filenames: false
