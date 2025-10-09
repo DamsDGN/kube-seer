@@ -7,6 +7,8 @@ import logging
 from typing import List, Dict, Any, Optional
 import aiohttp
 
+from .config import Config
+from .models import Alert, LogEntry, Metric
 try:
     import aiohttp
 except ImportError:

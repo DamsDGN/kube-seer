@@ -195,7 +195,9 @@ class AlertManager:
             msg = MIMEMultipart()
             msg["From"] = self.config.email_username
             msg["To"] = self.config.email_recipients
-            msg["Subject"] = f"🚨 EFK SRE Alert - {alert.severity.upper()} - {alert.type}"
+            msg[
+                "Subject"
+            ] = f"🚨 EFK SRE Alert - {alert.severity.upper()} - {alert.type}"
 
             # Corps du message
             body = f"""
