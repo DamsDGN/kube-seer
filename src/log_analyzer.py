@@ -6,12 +6,9 @@ import logging
 import re
 import pickle
 import os
-from datetime import datetime, UTC, timedelta
-from typing import List, Dict, Any, Set
+from datetime import datetime, UTC
+from typing import List, Dict
 from collections import Counter
-
-import pandas as pd
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import RandomForestClassifier

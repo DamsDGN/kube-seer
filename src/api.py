@@ -5,10 +5,8 @@ API REST pour l'agent SRE
 import asyncio
 import logging
 from datetime import datetime, UTC
-from typing import Dict, Any
 
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -70,8 +68,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Arrêt propre de l'API"""
-    global agent
-
     if agent:
         await agent.stop()
         logger.info("API SRE Agent arrêtée")

@@ -5,18 +5,16 @@ Analyseur de métriques avec détection d'anomalies par ML
 import logging
 import pickle
 import os
-from datetime import datetime, UTC, timedelta
-from typing import List, Dict, Any, Optional
+from datetime import datetime, UTC
+from typing import List
 
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
 
 from config import Config
-from models import Metric, Alert, AnomalyResult, ModelMetrics
+from models import Metric, Alert
 
 logger = logging.getLogger(__name__)
 

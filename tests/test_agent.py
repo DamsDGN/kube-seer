@@ -3,21 +3,20 @@ Tests unitaires pour l'agent SRE
 """
 
 import pytest
-import asyncio
 import sys
 import os
-from datetime import datetime, UTC, timedelta
-from unittest.mock import Mock, AsyncMock, patch
+from datetime import datetime, UTC
+from unittest.mock import patch
 
 # Ajouter le répertoire src au path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from config import Config
-from models import Metric, LogEntry, Alert
-from metrics_analyzer import MetricsAnalyzer
-from log_analyzer import LogAnalyzer
-from alerting import AlertManager
-from agent import SREAgent
+from config import Config  # noqa: E402
+from models import Metric, LogEntry, Alert  # noqa: E402
+from metrics_analyzer import MetricsAnalyzer  # noqa: E402
+from log_analyzer import LogAnalyzer  # noqa: E402
+from alerting import AlertManager  # noqa: E402
+from agent import SREAgent  # noqa: E402
 
 
 @pytest.fixture
@@ -293,7 +292,7 @@ async def test_integration_analysis_cycle(config):
     """Test d'intégration du cycle d'analyse complet"""
     with patch("src.agent.Elasticsearch") as mock_es, patch(
         "src.agent.config.load_incluster_config"
-    ), patch("src.agent.client.CoreV1Api") as mock_k8s:
+    ), patch("src.agent.client.CoreV1Api"):
 
         # Configuration des mocks
         mock_es.return_value.ping.return_value = True

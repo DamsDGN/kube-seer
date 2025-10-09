@@ -3,18 +3,12 @@ Agent IA SRE pour l'analyse des métriques et logs d'une stack EFK
 """
 
 import asyncio
-import logging
-import os
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Optional, Any
+from datetime import datetime, UTC
+from typing import List
 
 import structlog
 from elasticsearch import Elasticsearch
 from kubernetes import client, config
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
 
 from config import Config
 from metrics_analyzer import MetricsAnalyzer
