@@ -280,7 +280,7 @@ async def enhance_alert(alert_id: str, agent: SREAgent = Depends(get_agent)):
         # Récupérer l'alerte depuis l'historique
         alert = None
         for a in agent.alert_manager.alert_history:
-            if str(id(a)) == alert_id:  # Utilisation temporaire de l'ID d'objet
+            if hasattr(a, "uuid") and str(a.uuid) == alert_id:
                 alert = a
                 break
 
