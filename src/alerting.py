@@ -9,7 +9,7 @@ import smtplib
 from datetime import datetime, UTC
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List
+from typing import List, Dict
 import aiohttp
 
 from config import Config
@@ -25,8 +25,8 @@ class AlertManager:
 
     def __init__(self, config: Config):
         self.config = config
-        self.alert_history = []
-        self.rate_limits = {}  # Pour éviter le spam d'alertes
+        self.alert_history: List[Alert] = []
+        self.rate_limits: Dict[str, datetime] = {}  # Pour éviter le spam d'alertes
 
     async def send_alert(self, alert: Alert):
         """Envoie une alerte via tous les canaux configurés"""
@@ -251,8 +251,8 @@ Agent EFK SRE
             a for a in self.alert_history if (now - a.timestamp).total_seconds() < 86400
         ]
 
-        severity_counts = {}
-        type_counts = {}
+        severity_counts: Dict[str, int] = {}
+        type_counts: Dict[str, int] = {}
 
         for alert in self.alert_history:
             severity_counts[alert.severity] = severity_counts.get(alert.severity, 0) + 1

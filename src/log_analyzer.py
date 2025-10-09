@@ -7,7 +7,7 @@ import re
 import pickle
 import os
 from datetime import datetime, UTC
-from typing import List, Dict
+from typing import List, Dict, Set
 from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import DBSCAN
@@ -33,7 +33,7 @@ class LogAnalyzer:
         self.classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 
         self.error_patterns = self._load_error_patterns()
-        self.known_errors = set()
+        self.known_errors: Set[str] = set()
         self.is_trained = False
 
         # Chemins de sauvegarde
@@ -123,7 +123,7 @@ class LogAnalyzer:
     def _analyze_patterns(self, logs: List[LogEntry]) -> List[Alert]:
         """Analyse basée sur des patterns d'erreurs connus"""
         alerts = []
-        pattern_matches = {}
+        pattern_matches: Dict[str, List[LogEntry]] = {}
 
         for log in logs:
             message = log.message.lower()
@@ -203,7 +203,7 @@ class LogAnalyzer:
 
     async def _analyze_with_ml(self, logs: List[LogEntry]) -> List[Alert]:
         """Analyse avec modèles ML"""
-        alerts = []
+        alerts: List[Alert] = []
 
         try:
             # Préparer les données

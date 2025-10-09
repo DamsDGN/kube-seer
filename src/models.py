@@ -2,9 +2,9 @@
 Modèles de données pour l'agent SRE
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from enum import Enum
 
 
@@ -84,12 +84,11 @@ class Alert:
     severity: str
     message: str
     timestamp: datetime
-    metadata: Dict[str, Any] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
     resolved: bool = False
 
     def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
+        pass  # metadata is now initialized by default_factory
 
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""

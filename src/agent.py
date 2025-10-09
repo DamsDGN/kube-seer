@@ -4,7 +4,7 @@ Agent IA SRE pour l'analyse des métriques et logs d'une stack EFK
 
 import asyncio
 from datetime import datetime, UTC
-from typing import List
+from typing import List, Optional, Dict
 
 import structlog
 from elasticsearch import Elasticsearch
@@ -26,7 +26,7 @@ class SREAgent:
 
     def __init__(self, config: Config):
         self.config = config
-        self.es_client = None
+        self.es_client: Optional[Elasticsearch] = None
         self.k8s_client = None
         self.metrics_analyzer = MetricsAnalyzer(config)
         self.log_analyzer = LogAnalyzer(config)
@@ -139,6 +139,9 @@ class SREAgent:
                 },
             }
 
+            if not self.es_client:
+                raise ConnectionError("Elasticsearch client not initialized")
+                
             response = self.es_client.search(
                 index=self.config.metrics_index, body=query, size=0
             )
@@ -185,6 +188,9 @@ class SREAgent:
                 "sort": [{"@timestamp": {"order": "desc"}}],
             }
 
+            if not self.es_client:
+                raise ConnectionError("Elasticsearch client not initialized")
+                
             response = self.es_client.search(
                 index=self.config.logs_index, body=query, size=1000
             )
@@ -219,14 +225,14 @@ class SREAgent:
         correlated_alerts = []
 
         # Grouper par pod/namespace
-        metric_by_pod = {}
+        metric_by_pod: Dict[str, List[Alert]] = {}
         for alert in metric_anomalies:
             pod = alert.metadata.get("pod_name", "")
             if pod not in metric_by_pod:
                 metric_by_pod[pod] = []
             metric_by_pod[pod].append(alert)
 
-        log_by_pod = {}
+        log_by_pod: Dict[str, List[Alert]] = {}
         for alert in log_anomalies:
             pod = alert.metadata.get("pod_name", "")
             if pod not in log_by_pod:
