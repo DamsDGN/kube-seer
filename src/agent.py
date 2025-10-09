@@ -141,7 +141,7 @@ class SREAgent:
 
             if not self.es_client:
                 raise ConnectionError("Elasticsearch client not initialized")
-                
+
             response = self.es_client.search(
                 index=self.config.metrics_index, body=query, size=0
             )
@@ -190,7 +190,7 @@ class SREAgent:
 
             if not self.es_client:
                 raise ConnectionError("Elasticsearch client not initialized")
-                
+
             response = self.es_client.search(
                 index=self.config.logs_index, body=query, size=1000
             )

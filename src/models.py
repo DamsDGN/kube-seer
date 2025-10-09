@@ -4,7 +4,7 @@ Modèles de données pour l'agent SRE
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from enum import Enum
 
 
