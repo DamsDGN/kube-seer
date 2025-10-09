@@ -1,4 +1,4 @@
-FROM python:3.11-slim as base
+FROM python:3.13-slim as base
 
 # Métadonnées pour OCI
 LABEL org.opencontainers.image.title="EFK SRE Agent"
@@ -16,50 +16,60 @@ LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.revision=$REVISION
 
 # Variables d'environnement
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 # Étape de build des dépendances
 FROM base as builder
 
-# Installer les dépendances de compilation
+# Installer les dépendances de compilation en une seule couche
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+        gcc \
+        g++ \
+        pkg-config \
+        && \
+    python -m venv /opt/venv && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
-# Créer l'environnement virtuel
-RUN python -m venv /opt/venv
+# Utiliser le venv pour les installations suivantes
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copier les requirements et installer les dépendances Python
+# Copier et installer les dépendances Python
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt && \
+    find /opt/venv -name "*.pyc" -delete && \
+    find /opt/venv -name "__pycache__" -type d -exec rm -rf {} + || true
 
 # Étape finale
 FROM base as final
 
-# Créer un utilisateur non-root
-RUN groupadd -r sre && useradd -r -g sre sre
+# Installer curl pour les healthchecks
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+# Créer un utilisateur non-root avec UID/GID fixes pour la reproductibilité
+RUN groupadd -r sre -g 1001 && \
+    useradd -r -g sre -u 1001 -m -d /home/sre sre
 
 # Copier l'environnement virtuel depuis le builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+COPY --from=builder --chown=sre:sre /opt/venv /opt/venv
 
 # Répertoire de travail
 WORKDIR /app
 
-# Copier le code source
-COPY src/ ./src/
-COPY README.md .
+# Copier le code source avec les bonnes permissions
+COPY --chown=sre:sre src/ ./src/
+COPY --chown=sre:sre README.md .
 
-# Créer les répertoires nécessaires
-RUN mkdir -p /tmp/models && \
-    chown -R sre:sre /app /tmp/models
+# Créer les répertoires nécessaires avec les bonnes permissions
+RUN mkdir -p /tmp/models /app/logs && \
+    chown -R sre:sre /tmp/models /app
 
 # Passer à l'utilisateur non-root
 USER sre
@@ -67,9 +77,9 @@ USER sre
 # Port exposé pour l'API REST
 EXPOSE 8080
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
+# Healthcheck optimisé avec curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Point d'entrée
 CMD ["python", "-m", "src.main"]
