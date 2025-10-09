@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: damsdgn/efk-sre-agent
+  IMAGE_NAME: damsdgn29/efk-sre-agent
 
 jobs:
   # Tests et validation du code
@@ -215,7 +215,7 @@ jobs:
           
           ### 🐳 Docker Image
           ```bash
-          docker pull damsdgn/efk-sre-agent:${{ github.ref_name }}
+          docker pull damsdgn29/efk-sre-agent:${{ github.ref_name }}
           ```
           
           ### ⚓ Helm Installation

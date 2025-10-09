@@ -21,13 +21,13 @@
 
 ```bash
 # Latest stable
-docker pull damsdgn/efk-sre-agent:latest
+docker pull damsdgn29/efk-sre-agent:latest
 
 # Version spécifique  
-docker pull damsdgn/efk-sre-agent:v1.0.0
+docker pull damsdgn29/efk-sre-agent:v1.0.0
 
 # Branch develop
-docker pull damsdgn/efk-sre-agent:develop
+docker pull damsdgn29/efk-sre-agent:develop
 ```
 
 ## Configuration requise
@@ -44,5 +44,5 @@ docker pull damsdgn/efk-sre-agent:develop
 ## Monitoring
 
 - [Actions GitHub](https://github.com/DamsDGN/efk-sre-agent/actions)
-- [Docker Hub](https://hub.docker.com/r/damsdgn/efk-sre-agent)
+- [Docker Hub](https://hub.docker.com/r/damsdgn29/efk-sre-agent)
 - [Releases](https://github.com/DamsDGN/efk-sre-agent/releases)
