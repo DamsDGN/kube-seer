@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent SRE - Tableau de Bord</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .status-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-card h3 { color: #333; margin-bottom: 10px; }
+        .status-value { font-size: 2em; font-weight: bold; margin: 10px 0; }
+        .status-ok { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-critical { color: #dc3545; }
+        .alerts-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .alert-item { border-left: 4px solid #ddd; padding: 15px; margin: 10px 0; background: #f8f9fa; border-radius: 0 4px 4px 0; }
+        .alert-critical { border-left-color: #dc3545; }
+        .alert-warning { border-left-color: #ffc107; }
+        .alert-info { border-left-color: #17a2b8; }
+        .llm-analysis { background: #e7f3ff; padding: 10px; margin-top: 10px; border-radius: 4px; border-left: 3px solid #007bff; }
+        .timestamp { font-size: 0.9em; color: #666; }
+        .refresh-btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .refresh-btn:hover { background: #0056b3; }
+        .loading { text-align: center; padding: 20px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agent SRE - Tableau de Bord</h1>
+            <p>Monitoring temps réel de votre stack EFK avec analyse IA</p>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Actualiser</button>
+            <span id="lastUpdate" class="timestamp"></span>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>📊 Statut Agent</h3>
+                <div id="agentStatus" class="status-value">-</div>
+                <div id="uptime">Temps de fonctionnement: -</div>
+            </div>
+            <div class="status-card">
+                <h3>🚨 Alertes Actives</h3>
+                <div id="alertsCount" class="status-value">-</div>
+                <div id="alertsBreakdown">Critical: - | Warning: -</div>
+            </div>
+            <div class="status-card">
+                <h3>🤖 LLM Status</h3>
+                <div id="llmStatus" class="status-value">-</div>
+                <div id="llmProvider">Provider: -</div>
+            </div>
+            <div class="status-card">
+                <h3>📈 Dernière Analyse</h3>
+                <div id="lastAnalysis" class="status-value">-</div>
+                <div id="analysisInterval">Intervalle: -</div>
+            </div>
+        </div>
+
+        <div class="alerts-section">
+            <h2>🚨 Alertes Récentes</h2>
+            <div id="alertsList" class="loading">Chargement des alertes...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Erreur lors de la récupération de ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        async function updateStatus() {
+            const statusData = await fetchData('/status');
+            if (statusData) {
+                document.getElementById('agentStatus').textContent = statusData.status || 'unknown';
+                document.getElementById('agentStatus').className = `status-value ${statusData.status === 'running' ? 'status-ok' : 'status-critical'}`;
+                document.getElementById('uptime').textContent = `Temps de fonctionnement: ${statusData.uptime || 'unknown'}`;
+                document.getElementById('lastAnalysis').textContent = statusData.last_analysis ? new Date(statusData.last_analysis).toLocaleTimeString() : '-';
+                document.getElementById('analysisInterval').textContent = `Intervalle: ${statusData.analysis_interval || '-'}s`;
+            }
+        }
+
+        async function updateAlerts() {
+            const alertsData = await fetchData('/alerts?limit=20');
+            if (alertsData) {
+                const total = alertsData.total || 0;
+                const critical = alertsData.alerts?.filter(a => a.severity === 'critical').length || 0;
+                const warning = alertsData.alerts?.filter(a => a.severity === 'warning').length || 0;
+                
+                document.getElementById('alertsCount').textContent = total;
+                document.getElementById('alertsCount').className = `status-value ${critical > 0 ? 'status-critical' : warning > 0 ? 'status-warning' : 'status-ok'}`;
+                document.getElementById('alertsBreakdown').textContent = `Critical: ${critical} | Warning: ${warning}`;
+            }
+        }
+
+        async function updateLLMStatus() {
+            const llmData = await fetchData('/llm/status');
+            if (llmData) {
+                document.getElementById('llmStatus').textContent = llmData.enabled ? '✅ Activé' : '❌ Désactivé';
+                document.getElementById('llmStatus').className = `status-value ${llmData.enabled ? 'status-ok' : 'status-warning'}`;
+                document.getElementById('llmProvider').textContent = `Provider: ${llmData.provider || 'N/A'}`;
+            }
+        }
+
+        async function updateAlertsList() {
+            const enhancedAlerts = await fetchData('/alerts/enhanced?limit=10');
+            const alertsList = document.getElementById('alertsList');
+            
+            if (!enhancedAlerts || !enhancedAlerts.alerts) {
+                alertsList.innerHTML = '<p>Aucune alerte récente</p>';
+                return;
+            }
+
+            const alertsHtml = enhancedAlerts.alerts.map(item => {
+                const alert = item.alert;
+                const analysis = item.enhanced_analysis;
+                
+                const severityClass = `alert-${alert.severity}`;
+                const timestamp = new Date(alert.timestamp).toLocaleString();
+                
+                let analysisHtml = '';
+                if (analysis && analysis.enhanced) {
+                    analysisHtml = `
+                        <div class="llm-analysis">
+                            <strong>🤖 Analyse IA:</strong><br>
+                            <strong>Interprétation:</strong> ${analysis.interpretation || 'N/A'}<br>
+                            ${analysis.recommendations && analysis.recommendations.length > 0 ? 
+                                `<strong>Recommandations:</strong> ${analysis.recommendations.slice(0, 2).join(', ')}` : ''}
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="alert-item ${severityClass}">
+                        <strong>${alert.severity.toUpperCase()}: ${alert.message}</strong><br>
+                        <span class="timestamp">${timestamp}</span>
+                        ${analysisHtml}
+                    </div>
+                `;
+            }).join('');
+            
+            alertsList.innerHTML = alertsHtml;
+        }
+
+        async function refreshData() {
+            document.getElementById('lastUpdate').textContent = 'Actualisation...';
+            
+            await Promise.all([
+                updateStatus(),
+                updateAlerts(),
+                updateLLMStatus(),
+                updateAlertsList()
+            ]);
+            
+            document.getElementById('lastUpdate').textContent = `Dernière mise à jour: ${new Date().toLocaleTimeString()}`;
+        }
+
+        // Actualisation automatique toutes les 30 secondes
+        setInterval(refreshData, 30000);
+        
+        // Chargement initial
+        refreshData();
+    </script>
+</body>
+</html>

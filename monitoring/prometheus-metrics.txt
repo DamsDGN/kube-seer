@@ -1,0 +1,34 @@
+# Métriques Prometheus exposées par l'Agent SRE
+
+# HELP sre_agent_alerts_total Total number of alerts generated
+# TYPE sre_agent_alerts_total counter
+sre_agent_alerts_total{severity="critical",type="resource_usage"} 12
+sre_agent_alerts_total{severity="warning",type="log_anomaly"} 45
+
+# HELP sre_agent_analysis_duration_seconds Time taken for analysis cycle
+# TYPE sre_agent_analysis_duration_seconds histogram
+sre_agent_analysis_duration_seconds_bucket{le="1.0"} 150
+sre_agent_analysis_duration_seconds_bucket{le="5.0"} 280
+sre_agent_analysis_duration_seconds_bucket{le="10.0"} 300
+sre_agent_analysis_duration_seconds_sum 1250.5
+sre_agent_analysis_duration_seconds_count 300
+
+# HELP sre_agent_model_accuracy Model accuracy score
+# TYPE sre_agent_model_accuracy gauge
+sre_agent_model_accuracy{model="metrics"} 0.95
+sre_agent_model_accuracy{model="logs"} 0.89
+
+# HELP sre_agent_llm_calls_total Total LLM API calls
+# TYPE sre_agent_llm_calls_total counter
+sre_agent_llm_calls_total{provider="openai",status="success"} 234
+sre_agent_llm_calls_total{provider="openai",status="error"} 12
+
+# HELP sre_agent_llm_duration_seconds LLM API call duration
+# TYPE sre_agent_llm_duration_seconds histogram
+sre_agent_llm_duration_seconds_bucket{provider="openai",le="1.0"} 45
+sre_agent_llm_duration_seconds_bucket{provider="openai",le="5.0"} 200
+sre_agent_llm_duration_seconds_bucket{provider="openai",le="10.0"} 234
+
+# HELP sre_agent_status Agent status (1=running, 0=stopped)
+# TYPE sre_agent_status gauge
+sre_agent_status 1

@@ -21,6 +21,18 @@ data:
   LOG_LEVEL: {{ .Values.config.logLevel | quote }}
   MODEL_RETRAIN_INTERVAL: {{ .Values.config.models.retrainInterval | quote }}
   MODEL_WINDOW_SIZE: {{ .Values.config.models.windowSize | quote }}
+  {{- if .Values.llm.enabled }}
+  LLM_ENABLED: "true"
+  LLM_PROVIDER: {{ .Values.llm.provider | quote }}
+  LLM_MODEL: {{ .Values.llm.model | quote }}
+  LLM_MAX_TOKENS: {{ .Values.llm.maxTokens | quote }}
+  LLM_TEMPERATURE: {{ .Values.llm.temperature | quote }}
+  {{- if .Values.llm.baseUrl }}
+  LLM_BASE_URL: {{ .Values.llm.baseUrl | quote }}
+  {{- end }}
+  {{- else }}
+  LLM_ENABLED: "false"
+  {{- end }}
   {{- if .Values.alerting.webhook.enabled }}
   WEBHOOK_URL: {{ .Values.alerting.webhook.url | quote }}
   {{- end }}

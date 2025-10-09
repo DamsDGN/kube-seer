@@ -42,6 +42,13 @@ L'agent SRE utilise des techniques de Machine Learning pour :
 - **Pattern Matching** : Détection d'erreurs connues (OOM, réseau, etc.)
 - **Signatures d'erreurs** : Identification de nouveaux types d'erreurs
 
+### 🚀 Intégration LLM (Nouvelle fonctionnalité)
+- **Analyse contextuelle** : Interprétation améliorée des événements
+- **Recommandations intelligentes** : Suggestions d'actions basées sur l'expertise SRE
+- **Guides de dépannage** : Instructions étape par étape pour résoudre les incidents
+- **Support multi-providers** : OpenAI GPT, Anthropic Claude, Ollama (local)
+- **Optionnel** : Fonctionne avec ou sans LLM
+
 ### Corrélation Intelligente
 - Corrélation spatio-temporelle des anomalies
 - Scoring de criticité basé sur la convergence des signaux
@@ -187,6 +194,25 @@ POST /analyze/manual
 POST /models/retrain
 ```
 
+### 🤖 Endpoints LLM (Nouveaux)
+
+```bash
+# Statut de l'intégration LLM
+GET /llm/status
+
+# Alertes avec analyse LLM enrichie
+GET /alerts/enhanced?limit=10
+
+# Améliorer une alerte spécifique
+POST /alerts/{alert_id}/enhance
+
+# Guide de dépannage pour une alerte
+POST /alerts/{alert_id}/troubleshoot
+
+# Analyse des patterns dans les logs
+GET /logs/patterns?limit=50
+```
+
 ### Exemple de réponse d'alerte
 
 ```json
@@ -224,6 +250,39 @@ ANOMALY_THRESHOLD: 0.05
 MODEL_RETRAIN_INTERVAL: 3600
 MODEL_WINDOW_SIZE: 100
 ```
+
+### 🤖 Configuration LLM (Optionnel)
+
+L'agent supporte l'intégration avec des modèles de langage pour améliorer l'interprétation des événements :
+
+```yaml
+# Activation du LLM
+LLM_ENABLED: true
+LLM_PROVIDER: openai  # openai, anthropic, ollama
+
+# Configuration OpenAI
+LLM_MODEL: gpt-3.5-turbo  # ou gpt-4
+LLM_API_KEY: sk-your-api-key-here
+
+# Configuration Anthropic Claude
+LLM_MODEL: claude-3-sonnet-20240229
+LLM_API_KEY: your-anthropic-key
+
+# Configuration Ollama (local)
+LLM_PROVIDER: ollama
+LLM_MODEL: llama2
+LLM_BASE_URL: http://localhost:11434
+
+# Paramètres communs
+LLM_MAX_TOKENS: 1000
+LLM_TEMPERATURE: 0.1
+```
+
+#### Fonctionnalités LLM disponibles :
+- **Interprétation d'alertes** : Analyse contextuelle des incidents
+- **Recommandations** : Suggestions d'actions basées sur l'expertise SRE
+- **Guides de dépannage** : Instructions étape par étape
+- **Analyse de patterns** : Détection avancée dans les logs
 
 ### Canaux d'Alerting
 

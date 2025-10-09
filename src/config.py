@@ -60,6 +60,15 @@ class Config:
         )  # 1 heure
         self.model_window_size = int(os.getenv("MODEL_WINDOW_SIZE", "100"))
 
+        # Configuration LLM (optionnel)
+        self.llm_enabled = os.getenv("LLM_ENABLED", "false").lower() == "true"
+        self.llm_provider = os.getenv("LLM_PROVIDER", "openai")  # openai, anthropic, ollama
+        self.llm_api_key = os.getenv("LLM_API_KEY", "")
+        self.llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
+        self.llm_base_url = os.getenv("LLM_BASE_URL", "")  # Pour Ollama ou autres APIs
+        self.llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "1000"))
+        self.llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+
         # Validation
         self._validate()
 
@@ -77,6 +86,15 @@ class Config:
             raise ValueError(
                 "Memory warning threshold doit être inférieur au threshold critique"
             )
+
+        # Validation LLM
+        if self.llm_enabled:
+            if self.llm_provider == "openai" and not self.llm_api_key:
+                raise ValueError("LLM_API_KEY est requis pour le provider OpenAI")
+            if self.llm_provider == "anthropic" and not self.llm_api_key:
+                raise ValueError("LLM_API_KEY est requis pour le provider Anthropic")
+            if self.llm_provider == "ollama" and not self.llm_base_url:
+                raise ValueError("LLM_BASE_URL est requis pour le provider Ollama")
 
     def __post_init__(self):
         """Validation de la configuration"""

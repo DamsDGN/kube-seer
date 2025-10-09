@@ -1,0 +1,87 @@
+# Configuration pour environnement de développement avec LLM activé
+# Utiliser avec: helm install -f values-dev-llm.yaml
+
+config:
+  elasticsearch:
+    url: "http://elasticsearch:9200"
+    user: "elastic"
+  
+  indices:
+    metrics: "metricbeat-*"
+    logs: "fluentd-*"
+  
+  kubernetes:
+    inCluster: true
+    namespace: "monitoring"
+  
+  analysis:
+    interval: 300  # 5 minutes
+    anomalyThreshold: 0.05
+  
+  thresholds:
+    cpu:
+      warning: 70.0
+      critical: 85.0
+    memory:
+      warning: 70.0
+      critical: 85.0
+  
+  logLevel: "DEBUG"
+  
+  models:
+    retrainInterval: 1800  # 30 minutes pour le dev
+    windowSize: 50
+
+# Configuration LLM activée pour le développement
+llm:
+  enabled: true
+  provider: "openai"  # ou "ollama" pour local
+  model: "gpt-3.5-turbo"
+  maxTokens: 1000
+  temperature: 0.1
+  # baseUrl: "http://ollama:11434"  # Décommenter pour Ollama
+  apiKey: ""  # À définir via secret
+
+alerting:
+  enabled: true
+  webhook:
+    enabled: false
+  slack:
+    enabled: false
+  email:
+    enabled: false
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: efk-sre-agent-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: 1000m  # Plus de CPU pour le dev avec LLM
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Affinity pour éviter les nœuds de production
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+        - key: node-type
+          operator: In
+          values:
+          - development

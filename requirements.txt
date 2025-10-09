@@ -13,6 +13,11 @@ aiohttp>=3.8.0
 # Machine Learning / AI
 scikit-learn>=1.2.0
 
+# LLM Integration (optionnel)
+openai>=1.0.0  # Pour OpenAI GPT
+anthropic>=0.7.0  # Pour Claude
+httpx>=0.25.0  # Client HTTP pour les APIs LLM
+
 # Kubernetes client
 kubernetes>=25.0.0
 

@@ -12,6 +12,11 @@ uvicorn[standard]==0.30.6
 # Kubernetes client
 kubernetes==30.1.0
 
+# LLM Integration (optionnel)
+openai==1.51.2
+anthropic==0.34.2
+httpx==0.27.2
+
 # Logging
 structlog==24.4.0
 

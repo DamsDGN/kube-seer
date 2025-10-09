@@ -51,6 +51,17 @@ config:
     retrainInterval: 3600  # 1 heure
     windowSize: 100
 
+# Configuration LLM (optionnel - pour améliorer l'interprétation des événements)
+llm:
+  enabled: false
+  provider: "openai"  # openai, anthropic, ollama
+  model: "gpt-3.5-turbo"
+  maxTokens: 1000
+  temperature: 0.1
+  baseUrl: ""  # Pour Ollama uniquement
+  # API Key à définir via secret
+  apiKey: ""
+
 # Alerting (optionnel)
 alerting:
   enabled: true
