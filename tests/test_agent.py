@@ -6,7 +6,7 @@ import pytest
 import sys
 import os
 from datetime import datetime, UTC
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 # Ajouter le répertoire src au path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -22,7 +22,28 @@ from agent import SREAgent  # noqa: E402
 @pytest.fixture
 def config():
     """Configuration de test"""
-    return Config()
+    from unittest.mock import Mock
+    mock_config = Mock()
+    mock_config.elasticsearch_url = "http://localhost:9200"
+    mock_config.elasticsearch_user = "test"
+    mock_config.elasticsearch_password = "test"
+    mock_config.metrics_index = "test-metrics"
+    mock_config.logs_index = "test-logs"
+    mock_config.k8s_in_cluster = False
+    mock_config.k8s_namespace = "test"
+    mock_config.webhook_url = ""
+    mock_config.smtp_server = ""
+    mock_config.email_from = ""
+    mock_config.email_to = ""
+    mock_config.alert_cooldown = 300
+    # Seuils pour les métriques
+    mock_config.cpu_threshold_critical = 90.0
+    mock_config.cpu_threshold_warning = 80.0
+    mock_config.memory_threshold_critical = 90.0
+    mock_config.memory_threshold_warning = 80.0
+    mock_config.anomaly_threshold = 0.1
+    mock_config.model_window_size = 100
+    return mock_config
 
 
 @pytest.fixture
@@ -239,14 +260,26 @@ class TestSREAgent:
     @pytest.mark.asyncio
     async def test_agent_initialization(self, config):
         """Test d'initialisation de l'agent"""
-        with patch("src.agent.Elasticsearch") as mock_es, patch(
-            "src.agent.config.load_incluster_config"
-        ), patch("src.agent.client.CoreV1Api"):
+        with patch("agent.Elasticsearch") as mock_es_class, patch(
+            "agent.config.load_incluster_config"
+        ), patch("agent.client.CoreV1Api") as mock_k8s_class:
 
-            mock_es.return_value.ping.return_value = True
+            # Mock de l'instance Elasticsearch
+            mock_es_instance = mock_es_class.return_value
+            mock_es_instance.ping.return_value = True
+
+            # Mock de l'instance Kubernetes
+            mock_k8s_instance = mock_k8s_class.return_value
 
             agent = SREAgent(config)
             await agent.initialize()
+
+            # Vérifier que Elasticsearch a été instancié
+            mock_es_class.assert_called_once()
+            mock_es_instance.ping.assert_called_once()
+            
+            # Vérifier que Kubernetes a été instancié
+            mock_k8s_class.assert_called_once()
 
             assert agent.es_client is not None
             assert agent.k8s_client is not None
@@ -290,13 +323,14 @@ class TestSREAgent:
 @pytest.mark.asyncio
 async def test_integration_analysis_cycle(config):
     """Test d'intégration du cycle d'analyse complet"""
-    with patch("src.agent.Elasticsearch") as mock_es, patch(
-        "src.agent.config.load_incluster_config"
-    ), patch("src.agent.client.CoreV1Api"):
+    with patch("agent.Elasticsearch") as mock_es_class, patch(
+        "agent.config.load_incluster_config"
+    ), patch("agent.client.CoreV1Api") as mock_k8s_class:
 
         # Configuration des mocks
-        mock_es.return_value.ping.return_value = True
-        mock_es.return_value.search.return_value = {
+        mock_es_instance = mock_es_class.return_value
+        mock_es_instance.ping.return_value = True
+        mock_es_instance.search.return_value = {
             "aggregations": {"pods": {"buckets": []}},
             "hits": {"hits": []},
         }
