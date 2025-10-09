@@ -261,7 +261,9 @@ class TestSREAgent:
         """Test d'initialisation de l'agent"""
         with patch("agent.Elasticsearch") as mock_es_class, patch(
             "agent.config.load_incluster_config"
-        ), patch("agent.client.CoreV1Api") as mock_k8s_class:
+        ), patch("agent.config.load_kube_config"), patch(
+            "agent.client.CoreV1Api"
+        ) as mock_k8s_class:
 
             # Mock de l'instance Elasticsearch
             mock_es_instance = mock_es_class.return_value
@@ -321,7 +323,7 @@ async def test_integration_analysis_cycle(config):
     """Test d'intégration du cycle d'analyse complet"""
     with patch("agent.Elasticsearch") as mock_es_class, patch(
         "agent.config.load_incluster_config"
-    ), patch(
+    ), patch("agent.config.load_kube_config"), patch(
         "agent.client.CoreV1Api"
     ):  # Mock K8s sans variable car pas utilisé
 
