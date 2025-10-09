@@ -175,9 +175,7 @@ class TestLogAnalyzer:
 
         # Doit détecter l'erreur OOM
         oom_alerts = [
-            a
-            for a in alerts
-            if "oom" in a.message.lower() or "memory" in a.message.lower()
+            a for a in alerts if "oom" in a.message.lower() or "memory" in a.message.lower()
         ]
         assert len(oom_alerts) > 0
 
@@ -310,9 +308,7 @@ class TestSREAgent:
 
         # Doit détecter une corrélation
         assert len(correlated) > 0
-        correlated_alert = next(
-            (a for a in correlated if a.type == "correlated_issue"), None
-        )
+        correlated_alert = next((a for a in correlated if a.type == "correlated_issue"), None)
         assert correlated_alert is not None
         assert correlated_alert.severity == "critical"
 
@@ -337,9 +333,7 @@ async def test_integration_analysis_cycle(config):
         await agent.initialize()
 
         # Simuler un cycle d'analyse
-        with patch.object(
-            agent, "collect_metrics"
-        ) as mock_collect_metrics, patch.object(
+        with patch.object(agent, "collect_metrics") as mock_collect_metrics, patch.object(
             agent, "collect_logs"
         ) as mock_collect_logs:
             mock_collect_metrics.return_value = []

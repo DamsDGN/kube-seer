@@ -207,9 +207,7 @@ class TestLLMAnalyzer:
         # Mock de la réponse
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "Test response"}}]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": "Test response"}}]}
         mock_post.return_value.__aenter__.return_value = mock_response
 
         result = await analyzer._call_openai("test prompt")
@@ -271,27 +269,21 @@ class TestLLMIntegration:
     """Tests d'intégration pour les fonctionnalités LLM"""
 
     @pytest.mark.asyncio
-    async def test_full_workflow_disabled(
-        self, config_llm_disabled, sample_alert, sample_logs
-    ):
+    async def test_full_workflow_disabled(self, config_llm_disabled, sample_alert, sample_logs):
         """Test du workflow complet avec LLM désactivé"""
         analyzer = LLMAnalyzer(config_llm_disabled)
 
         # Test des trois fonctionnalités principales
         alert_result = await analyzer.enhance_alert_interpretation(sample_alert)
         logs_result = await analyzer.analyze_log_patterns(sample_logs)
-        troubleshoot_result = await analyzer.provide_troubleshooting_guidance(
-            sample_alert
-        )
+        troubleshoot_result = await analyzer.provide_troubleshooting_guidance(sample_alert)
 
         # Toutes doivent retourner enhanced=False
         assert not alert_result["enhanced"]
         assert not logs_result["enhanced"]
         assert not troubleshoot_result["enhanced"]
 
-    def test_prompt_construction_consistency(
-        self, config_llm_openai, sample_alert, sample_logs
-    ):
+    def test_prompt_construction_consistency(self, config_llm_openai, sample_alert, sample_logs):
         """Test de cohérence dans la construction des prompts"""
         analyzer = LLMAnalyzer(config_llm_openai)
 

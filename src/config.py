@@ -14,9 +14,7 @@ class Config:
         """Initialise la configuration à partir des variables d'environnement"""
 
         # Elasticsearch
-        self.elasticsearch_url = os.getenv(
-            "ELASTICSEARCH_URL", "http://elasticsearch:9200"
-        )
+        self.elasticsearch_url = os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200")
         self.elasticsearch_user = os.getenv("ELASTICSEARCH_USER", "elastic")
         self.elasticsearch_password = os.getenv("ELASTICSEARCH_PASSWORD", "")
 
@@ -35,12 +33,8 @@ class Config:
         # Seuils d'alerte
         self.cpu_threshold_warning = float(os.getenv("CPU_THRESHOLD_WARNING", "70.0"))
         self.cpu_threshold_critical = float(os.getenv("CPU_THRESHOLD_CRITICAL", "85.0"))
-        self.memory_threshold_warning = float(
-            os.getenv("MEMORY_THRESHOLD_WARNING", "70.0")
-        )
-        self.memory_threshold_critical = float(
-            os.getenv("MEMORY_THRESHOLD_CRITICAL", "85.0")
-        )
+        self.memory_threshold_warning = float(os.getenv("MEMORY_THRESHOLD_WARNING", "70.0"))
+        self.memory_threshold_critical = float(os.getenv("MEMORY_THRESHOLD_CRITICAL", "85.0"))
 
         # Alerting
         self.webhook_url = os.getenv("WEBHOOK_URL")
@@ -55,16 +49,12 @@ class Config:
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
 
         # Modèles ML
-        self.model_retrain_interval = int(
-            os.getenv("MODEL_RETRAIN_INTERVAL", "3600")
-        )  # 1 heure
+        self.model_retrain_interval = int(os.getenv("MODEL_RETRAIN_INTERVAL", "3600"))  # 1 heure
         self.model_window_size = int(os.getenv("MODEL_WINDOW_SIZE", "100"))
 
         # Configuration LLM (optionnel)
         self.llm_enabled = os.getenv("LLM_ENABLED", "false").lower() == "true"
-        self.llm_provider = os.getenv(
-            "LLM_PROVIDER", "openai"
-        )  # openai, anthropic, ollama
+        self.llm_provider = os.getenv("LLM_PROVIDER", "openai")  # openai, anthropic, ollama
         self.llm_api_key = os.getenv("LLM_API_KEY", "")
         self.llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
         self.llm_base_url = os.getenv("LLM_BASE_URL", "")  # Pour Ollama ou autres APIs
@@ -80,14 +70,10 @@ class Config:
             raise ValueError("ANALYSIS_INTERVAL doit être au moins 60 secondes")
 
         if self.cpu_threshold_warning >= self.cpu_threshold_critical:
-            raise ValueError(
-                "CPU warning threshold doit être inférieur au threshold critique"
-            )
+            raise ValueError("CPU warning threshold doit être inférieur au threshold critique")
 
         if self.memory_threshold_warning >= self.memory_threshold_critical:
-            raise ValueError(
-                "Memory warning threshold doit être inférieur au threshold critique"
-            )
+            raise ValueError("Memory warning threshold doit être inférieur au threshold critique")
 
         # Validation LLM
         if self.llm_enabled:

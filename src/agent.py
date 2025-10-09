@@ -82,9 +82,7 @@ class SREAgent:
             log_anomalies = await self.log_analyzer.analyze(logs)
 
             # 4. Corréler les anomalies
-            correlated_alerts = await self.correlate_anomalies(
-                metric_anomalies, log_anomalies
-            )
+            correlated_alerts = await self.correlate_anomalies(metric_anomalies, log_anomalies)
 
             # 5. Générer et envoyer les alertes
             for alert in correlated_alerts:
@@ -93,9 +91,7 @@ class SREAgent:
             # 6. Mettre à jour les modèles ML
             await self.update_models(metrics, logs)
 
-            logger.info(
-                f"Cycle d'analyse terminé - {len(correlated_alerts)} alertes générées"
-            )
+            logger.info(f"Cycle d'analyse terminé - {len(correlated_alerts)} alertes générées")
 
         except Exception as e:
             logger.error(f"Erreur durant le cycle d'analyse: {e}")
@@ -124,18 +120,10 @@ class SREAgent:
                     "pods": {
                         "terms": {"field": "kubernetes.pod_name.keyword"},
                         "aggs": {
-                            "avg_cpu": {
-                                "avg": {"field": "kubernetes.pod.cpu.usage.nanocores"}
-                            },
-                            "avg_memory": {
-                                "avg": {"field": "kubernetes.pod.memory.usage.bytes"}
-                            },
-                            "max_cpu": {
-                                "max": {"field": "kubernetes.pod.cpu.usage.nanocores"}
-                            },
-                            "max_memory": {
-                                "max": {"field": "kubernetes.pod.memory.usage.bytes"}
-                            },
+                            "avg_cpu": {"avg": {"field": "kubernetes.pod.cpu.usage.nanocores"}},
+                            "avg_memory": {"avg": {"field": "kubernetes.pod.memory.usage.bytes"}},
+                            "max_cpu": {"max": {"field": "kubernetes.pod.cpu.usage.nanocores"}},
+                            "max_memory": {"max": {"field": "kubernetes.pod.memory.usage.bytes"}},
                         },
                     }
                 },
@@ -144,9 +132,7 @@ class SREAgent:
             if not self.es_client:
                 raise ConnectionError("Elasticsearch client not initialized")
 
-            response = self.es_client.search(
-                index=self.config.metrics_index, body=query, size=0
-            )
+            response = self.es_client.search(index=self.config.metrics_index, body=query, size=0)
 
             metrics = []
             for bucket in response["aggregations"]["pods"]["buckets"]:
@@ -193,9 +179,7 @@ class SREAgent:
             if not self.es_client:
                 raise ConnectionError("Elasticsearch client not initialized")
 
-            response = self.es_client.search(
-                index=self.config.logs_index, body=query, size=1000
-            )
+            response = self.es_client.search(index=self.config.logs_index, body=query, size=1000)
 
             logs = []
             for hit in response["hits"]["hits"]:
@@ -203,9 +187,7 @@ class SREAgent:
                 logs.append(
                     LogEntry(
                         pod_name=source.get("kubernetes", {}).get("pod_name", ""),
-                        namespace=source.get("kubernetes", {}).get(
-                            "namespace_name", ""
-                        ),
+                        namespace=source.get("kubernetes", {}).get("namespace_name", ""),
                         log_level=source.get("level", "INFO"),
                         message=source.get("log", ""),
                         timestamp=datetime.fromisoformat(
@@ -281,9 +263,7 @@ class SREAgent:
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour des modèles: {e}")
 
-    async def enhance_alert_with_llm(
-        self, alert: Alert, context: Optional[Dict] = None
-    ) -> Dict:
+    async def enhance_alert_with_llm(self, alert: Alert, context: Optional[Dict] = None) -> Dict:
         """
         Améliore une alerte avec l'analyse LLM
 
@@ -330,9 +310,7 @@ class SREAgent:
             logger.error(f"Erreur lors de la génération du guide de dépannage: {e}")
             return {"enhanced": False, "guidance": f"Erreur: {str(e)}"}
 
-    async def analyze_log_patterns_with_llm(
-        self, logs: Optional[List[LogEntry]] = None
-    ) -> Dict:
+    async def analyze_log_patterns_with_llm(self, logs: Optional[List[LogEntry]] = None) -> Dict:
         """
         Analyse les patterns de logs avec le LLM
 

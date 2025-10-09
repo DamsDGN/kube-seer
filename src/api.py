@@ -109,9 +109,7 @@ async def get_status(agent: SREAgent = Depends(get_agent)) -> SystemHealth:
     """Retourne le statut complet du système"""
     try:
         # Vérifier la connexion Elasticsearch
-        es_status = (
-            "healthy" if agent.es_client and agent.es_client.ping() else "unhealthy"
-        )
+        es_status = "healthy" if agent.es_client and agent.es_client.ping() else "unhealthy"
 
         # Vérifier Kubernetes
         try:
@@ -368,9 +366,7 @@ async def get_enhanced_alerts(limit: int = 10, agent: SREAgent = Depends(get_age
     """Retourne les alertes récentes avec analyse LLM enrichie"""
     try:
         recent_alerts = (
-            agent.alert_manager.alert_history[-limit:]
-            if agent.alert_manager.alert_history
-            else []
+            agent.alert_manager.alert_history[-limit:] if agent.alert_manager.alert_history else []
         )
         enhanced_alerts = []
 
@@ -392,9 +388,7 @@ async def get_enhanced_alerts(limit: int = 10, agent: SREAgent = Depends(get_age
                     }
                 )
             except Exception as e:
-                logger.warning(
-                    f"Erreur lors de l'amélioration de l'alerte {alert.type}: {e}"
-                )
+                logger.warning(f"Erreur lors de l'amélioration de l'alerte {alert.type}: {e}")
                 # Ajouter l'alerte sans amélioration
                 enhanced_alerts.append(
                     {

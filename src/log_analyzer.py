@@ -226,12 +226,8 @@ class LogAnalyzer:
             cluster_counts = Counter(clusters)
 
             for cluster_id, count in cluster_counts.items():
-                if (
-                    cluster_id != -1 and count > 5
-                ):  # Ignorer le bruit (-1) et les petits clusters
-                    cluster_logs = [
-                        logs[i] for i, c in enumerate(clusters) if c == cluster_id
-                    ]
+                if cluster_id != -1 and count > 5:  # Ignorer le bruit (-1) et les petits clusters
+                    cluster_logs = [logs[i] for i, c in enumerate(clusters) if c == cluster_id]
                     sample_message = cluster_logs[0].message[:100]
 
                     alerts.append(
@@ -303,8 +299,7 @@ class LogAnalyzer:
         important_words = [
             w
             for w in words
-            if len(w) > 3
-            and w.lower() not in ["the", "and", "for", "are", "but", "not"]
+            if len(w) > 3 and w.lower() not in ["the", "and", "for", "are", "but", "not"]
         ]
 
         return " ".join(important_words[:5])  # Limiter à 5 mots
@@ -320,8 +315,7 @@ class LogAnalyzer:
             # Préparer les données d'entraînement
             messages = [log.message for log in logs]
             labels = [
-                1 if log.log_level.upper() in ["ERROR", "CRITICAL", "FATAL"] else 0
-                for log in logs
+                1 if log.log_level.upper() in ["ERROR", "CRITICAL", "FATAL"] else 0 for log in logs
             ]
 
             if not messages:

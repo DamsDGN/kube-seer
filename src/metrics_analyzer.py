@@ -215,9 +215,7 @@ class MetricsAnalyzer:
 
         return alerts
 
-    async def _analyze_with_ml(
-        self, df: pd.DataFrame, features: np.ndarray
-    ) -> List[Alert]:
+    async def _analyze_with_ml(self, df: pd.DataFrame, features: np.ndarray) -> List[Alert]:
         """Analyse avec le modèle ML"""
         alerts = []
 

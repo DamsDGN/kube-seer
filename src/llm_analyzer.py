@@ -82,9 +82,7 @@ class LLMAnalyzer:
             "error": "Analyse LLM indisponible",
         }
 
-    async def analyze_log_patterns(
-        self, logs: List[LogEntry], limit: int = 10
-    ) -> Dict[str, Any]:
+    async def analyze_log_patterns(self, logs: List[LogEntry], limit: int = 10) -> Dict[str, Any]:
         """
         Analyse des patterns dans les logs avec le LLM
 
@@ -145,9 +143,7 @@ class LLMAnalyzer:
             return {"enhanced": False, "guidance": "Guide de dépannage LLM désactivé"}
 
         try:
-            prompt = self._build_troubleshooting_prompt(
-                alert, recent_metrics, recent_logs
-            )
+            prompt = self._build_troubleshooting_prompt(alert, recent_metrics, recent_logs)
             response = await self._call_llm(prompt)
 
             if response:
@@ -163,9 +159,7 @@ class LLMAnalyzer:
             "guidance": "Erreur lors de la génération du guide de dépannage",
         }
 
-    def _build_alert_prompt(
-        self, alert: Alert, context: Optional[Dict[str, Any]] = None
-    ) -> str:
+    def _build_alert_prompt(self, alert: Alert, context: Optional[Dict[str, Any]] = None) -> str:
         """Construit le prompt pour l'analyse d'alerte"""
         context_info = ""
         if context:
@@ -260,15 +254,11 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
         """Construit le prompt pour le guide de dépannage"""
         metrics_info = ""
         if recent_metrics:
-            metrics_info = (
-                f"Métriques récentes: {len(recent_metrics)} entrées disponibles"
-            )
+            metrics_info = f"Métriques récentes: {len(recent_metrics)} entrées disponibles"
 
         logs_info = ""
         if recent_logs:
-            logs_info = (
-                f"Logs récents: {len(recent_logs)} entrées, derniers messages:\n"
-            )
+            logs_info = f"Logs récents: {len(recent_logs)} entrées, derniers messages:\n"
             logs_info += "\n".join(
                 [
                     log.message[:100] + "..." if len(log.message) > 100 else log.message
@@ -337,9 +327,7 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
     async def _call_openai(self, prompt: str) -> Optional[str]:
         """Appelle l'API OpenAI"""
         if aiohttp is None:
-            logger.error(
-                "aiohttp n'est pas installé; impossible d'appeler l'API OpenAI"
-            )
+            logger.error("aiohttp n'est pas installé; impossible d'appeler l'API OpenAI")
             return None
 
         headers = {
@@ -371,17 +359,13 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
                     result = await response.json()
                     return result["choices"][0]["message"]["content"]
                 else:
-                    logger.error(
-                        f"Erreur OpenAI: {response.status} - {await response.text()}"
-                    )
+                    logger.error(f"Erreur OpenAI: {response.status} - {await response.text()}")
                     return None
 
     async def _call_anthropic(self, prompt: str) -> Optional[str]:
         """Appelle l'API Anthropic Claude"""
         if aiohttp is None:
-            logger.error(
-                "aiohttp n'est pas installé; impossible d'appeler l'API Anthropic"
-            )
+            logger.error("aiohttp n'est pas installé; impossible d'appeler l'API Anthropic")
             return None
 
         headers = {
@@ -408,17 +392,13 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
                     result = await response.json()
                     return result["content"][0]["text"]
                 else:
-                    logger.error(
-                        f"Erreur Anthropic: {response.status} - {await response.text()}"
-                    )
+                    logger.error(f"Erreur Anthropic: {response.status} - {await response.text()}")
                     return None
 
     async def _call_ollama(self, prompt: str) -> Optional[str]:
         """Appelle une instance Ollama locale"""
         if aiohttp is None:
-            logger.error(
-                "aiohttp n'est pas installé; impossible d'appeler l'API Ollama"
-            )
+            logger.error("aiohttp n'est pas installé; impossible d'appeler l'API Ollama")
             return None
 
         data = {
@@ -441,9 +421,7 @@ Réponds UNIQUEMENT en JSON avec cette structure exacte :
                     result = await response.json()
                     return result["response"]
                 else:
-                    logger.error(
-                        f"Erreur Ollama: {response.status} - {await response.text()}"
-                    )
+                    logger.error(f"Erreur Ollama: {response.status} - {await response.text()}")
                     return None
 
     def _parse_alert_response(self, response: str) -> Dict[str, Any]:
