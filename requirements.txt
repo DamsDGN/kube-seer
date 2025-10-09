@@ -38,7 +38,7 @@ pytest>=7.0.0
 pytest-asyncio>=0.20.0
 pytest-cov>=4.0.0
 
-# Code quality (installés via pipx)
-# black>=22.0.0
-# flake8>=5.0.0
-# mypy>=0.991
+# Code quality
+black==25.9.0
+flake8==6.1.0
+mypy>=1.5.0
