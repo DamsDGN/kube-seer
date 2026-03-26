@@ -43,9 +43,7 @@ class KubernetesApiCollector(StateCollector):
         except Exception:
             return False
 
-    async def collect_events(
-        self, namespace: str = ""
-    ) -> List[KubernetesEvent]:
+    async def collect_events(self, namespace: str = "") -> List[KubernetesEvent]:
         if not self._core_api:
             return []
         try:
@@ -81,9 +79,7 @@ class KubernetesApiCollector(StateCollector):
             )
         return events
 
-    async def collect_resource_states(
-        self, namespace: str = ""
-    ) -> List[ResourceState]:
+    async def collect_resource_states(self, namespace: str = "") -> List[ResourceState]:
         states: List[ResourceState] = []
         now = datetime.now(timezone.utc)
 
@@ -188,9 +184,7 @@ class KubernetesApiCollector(StateCollector):
             for d in result.items
         ]
 
-    async def _collect_jobs(
-        self, namespace: str, now: datetime
-    ) -> List[ResourceState]:
+    async def _collect_jobs(self, namespace: str, now: datetime) -> List[ResourceState]:
         if not self._batch_api:
             return []
         try:

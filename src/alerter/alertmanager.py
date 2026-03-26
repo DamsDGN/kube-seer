@@ -69,13 +69,15 @@ class AlertmanagerClient(BaseAlerter):
             }
             if a.namespace:
                 labels["namespace"] = a.namespace
-            alerts.append({
-                "labels": labels,
-                "annotations": {
-                    "description": a.description,
-                    "anomaly_id": a.anomaly_id,
-                    "score": str(a.score),
-                },
-                "startsAt": a.timestamp.isoformat(),
-            })
+            alerts.append(
+                {
+                    "labels": labels,
+                    "annotations": {
+                        "description": a.description,
+                        "anomaly_id": a.anomaly_id,
+                        "score": str(a.score),
+                    },
+                    "startsAt": a.timestamp.isoformat(),
+                }
+            )
         return alerts

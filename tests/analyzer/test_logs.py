@@ -66,7 +66,8 @@ class TestLogAnalyzerPatterns:
         mock_storage.query = AsyncMock(return_value=error_logs)
         anomalies = await analyzer.analyze()
         oom_anomalies = [
-            a for a in anomalies
+            a
+            for a in anomalies
             if "memory" in a.description.lower() or "oom" in a.description.lower()
         ]
         assert len(oom_anomalies) >= 1
@@ -96,12 +97,17 @@ class TestLogAnalyzerML:
         logs = []
         for i in range(60):
             level = "ERROR" if i % 5 == 0 else "INFO"
-            logs.append({
-                "timestamp": f"2026-01-15T10:{i:02d}:00Z",
-                "kubernetes": {"pod_name": f"pod-{i % 3}", "namespace_name": "default"},
-                "log": f"{level}: Processing request {i} "
-                       f"{'failed' if level == 'ERROR' else 'success'}",
-            })
+            logs.append(
+                {
+                    "timestamp": f"2026-01-15T10:{i:02d}:00Z",
+                    "kubernetes": {
+                        "pod_name": f"pod-{i % 3}",
+                        "namespace_name": "default",
+                    },
+                    "log": f"{level}: Processing request {i} "
+                    f"{'failed' if level == 'ERROR' else 'success'}",
+                }
+            )
         mock_storage.query = AsyncMock(return_value=logs)
         await analyzer.update_model()
         assert analyzer._vectorizer is not None

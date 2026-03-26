@@ -16,7 +16,9 @@ def collector(config):
     return KubernetesApiCollector(config)
 
 
-def _make_event(reason="OOMKilled", event_type="Warning", name="web-abc", namespace="default"):
+def _make_event(
+    reason="OOMKilled", event_type="Warning", name="web-abc", namespace="default"
+):
     event = MagicMock()
     event.type = event_type
     event.reason = reason
@@ -84,8 +86,12 @@ class TestKubernetesApiResourceStates:
     async def test_collect_resource_states(self, collector):
         mock_apps = MagicMock()
         dep = _make_deployment()
-        mock_apps.list_deployment_for_all_namespaces.return_value = MagicMock(items=[dep])
-        mock_apps.list_stateful_set_for_all_namespaces.return_value = MagicMock(items=[])
+        mock_apps.list_deployment_for_all_namespaces.return_value = MagicMock(
+            items=[dep]
+        )
+        mock_apps.list_stateful_set_for_all_namespaces.return_value = MagicMock(
+            items=[]
+        )
         mock_apps.list_daemon_set_for_all_namespaces.return_value = MagicMock(items=[])
         collector._apps_api = mock_apps
 

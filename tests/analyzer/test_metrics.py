@@ -81,16 +81,12 @@ def crashing_pod(sample_timestamp):
 class TestMetricsAnalyzerThresholds:
     @pytest.mark.asyncio
     async def test_no_anomaly_normal_node(self, analyzer, normal_node):
-        anomalies = await analyzer.analyze(
-            node_metrics=[normal_node], pod_metrics=[]
-        )
+        anomalies = await analyzer.analyze(node_metrics=[normal_node], pod_metrics=[])
         assert len(anomalies) == 0
 
     @pytest.mark.asyncio
     async def test_detects_high_cpu_node(self, analyzer, high_cpu_node):
-        anomalies = await analyzer.analyze(
-            node_metrics=[high_cpu_node], pod_metrics=[]
-        )
+        anomalies = await analyzer.analyze(node_metrics=[high_cpu_node], pod_metrics=[])
         cpu_anomalies = [a for a in anomalies if "CPU" in a.description]
         assert len(cpu_anomalies) >= 1
         assert cpu_anomalies[0].severity == Severity.CRITICAL
@@ -98,18 +94,14 @@ class TestMetricsAnalyzerThresholds:
 
     @pytest.mark.asyncio
     async def test_detects_crashing_pod(self, analyzer, crashing_pod):
-        anomalies = await analyzer.analyze(
-            node_metrics=[], pod_metrics=[crashing_pod]
-        )
+        anomalies = await analyzer.analyze(node_metrics=[], pod_metrics=[crashing_pod])
         restart_anomalies = [a for a in anomalies if "restart" in a.description.lower()]
         assert len(restart_anomalies) >= 1
         assert restart_anomalies[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
     async def test_detects_crashloop_status(self, analyzer, crashing_pod):
-        anomalies = await analyzer.analyze(
-            node_metrics=[], pod_metrics=[crashing_pod]
-        )
+        anomalies = await analyzer.analyze(node_metrics=[], pod_metrics=[crashing_pod])
         status_anomalies = [a for a in anomalies if "CrashLoop" in a.description]
         assert len(status_anomalies) >= 1
 

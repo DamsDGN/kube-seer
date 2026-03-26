@@ -100,25 +100,27 @@ class TestAnomaliesEndpoint:
 
     @pytest.mark.asyncio
     async def test_anomalies_with_results(self, client, mock_agent):
-        mock_agent._storage.query = AsyncMock(return_value=[
-            {
-                "record_type": "anomaly",
-                "data": {
-                    "anomaly_id": "a-001",
-                    "source": "metrics",
-                    "severity": 1,
-                    "resource_type": "node",
-                    "resource_name": "node-1",
-                    "namespace": "",
-                    "description": "CPU high",
-                    "score": 0.85,
-                    "details": {},
+        mock_agent._storage.query = AsyncMock(
+            return_value=[
+                {
+                    "record_type": "anomaly",
+                    "data": {
+                        "anomaly_id": "a-001",
+                        "source": "metrics",
+                        "severity": 1,
+                        "resource_type": "node",
+                        "resource_name": "node-1",
+                        "namespace": "",
+                        "description": "CPU high",
+                        "score": 0.85,
+                        "details": {},
+                        "timestamp": "2026-01-15T10:30:00Z",
+                    },
                     "timestamp": "2026-01-15T10:30:00Z",
-                },
-                "timestamp": "2026-01-15T10:30:00Z",
-                "cluster_name": "",
-            }
-        ])
+                    "cluster_name": "",
+                }
+            ]
+        )
         resp = await client.get("/anomalies")
         assert resp.status_code == 200
         data = resp.json()

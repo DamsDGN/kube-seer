@@ -21,20 +21,32 @@ def client(config):
 @pytest.fixture
 def critical_anomaly(sample_timestamp):
     return Anomaly(
-        anomaly_id="a-001", source="metrics", severity=Severity.CRITICAL,
-        resource_type="node", resource_name="node-1", namespace="",
-        description="CPU usage critical: 92.0%", score=0.92,
-        details={"cpu_usage_percent": 92.0}, timestamp=sample_timestamp,
+        anomaly_id="a-001",
+        source="metrics",
+        severity=Severity.CRITICAL,
+        resource_type="node",
+        resource_name="node-1",
+        namespace="",
+        description="CPU usage critical: 92.0%",
+        score=0.92,
+        details={"cpu_usage_percent": 92.0},
+        timestamp=sample_timestamp,
     )
 
 
 @pytest.fixture
 def warning_anomaly(sample_timestamp):
     return Anomaly(
-        anomaly_id="a-002", source="events", severity=Severity.WARNING,
-        resource_type="pod", resource_name="web-abc", namespace="default",
-        description="FailedScheduling: 0/3 nodes available", score=0.7,
-        details={}, timestamp=sample_timestamp,
+        anomaly_id="a-002",
+        source="events",
+        severity=Severity.WARNING,
+        resource_type="pod",
+        resource_name="web-abc",
+        namespace="default",
+        description="FailedScheduling: 0/3 nodes available",
+        score=0.7,
+        details={},
+        timestamp=sample_timestamp,
     )
 
 
