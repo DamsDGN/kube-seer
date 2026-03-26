@@ -177,9 +177,7 @@ class SREAgent:
             logger.error("agent.log_analysis_error", error=str(e))
 
         try:
-            incidents = await self._correlator.correlate(
-                anomalies=anomalies, data=data
-            )
+            incidents = await self._correlator.correlate(anomalies=anomalies, data=data)
         except Exception as e:
             logger.error("agent.correlation_error", error=str(e))
             incidents = []

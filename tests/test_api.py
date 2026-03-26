@@ -159,7 +159,8 @@ class TestIncidentsEndpoint:
     @pytest.mark.asyncio
     async def test_incidents_from_last_analysis(self, client, mock_agent):
         mock_agent._last_analysis = AnalysisResult(
-            anomalies=[], incidents=[],
+            anomalies=[],
+            incidents=[],
             analysis_timestamp=datetime(2026, 1, 15, 10, 30, tzinfo=timezone.utc),
         )
         resp = await client.get("/incidents")
