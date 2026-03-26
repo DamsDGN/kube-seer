@@ -93,3 +93,13 @@ class AnalysisResult(BaseModel):
     metrics_analyzed: int = 0
     logs_analyzed: int = 0
     events_analyzed: int = 0
+
+
+class Incident(BaseModel):
+    incident_id: str
+    anomalies: List[Anomaly]
+    severity: Severity
+    score: float
+    description: str
+    resources: List[str]
+    timestamp: datetime
