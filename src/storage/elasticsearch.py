@@ -1,5 +1,4 @@
 import structlog
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from elasticsearch import AsyncElasticsearch
@@ -69,9 +68,10 @@ class ElasticsearchStorage(BaseStorage):
         try:
             success, errors = await async_bulk(self._client, actions)
             if errors:
+                error_count = len(errors) if isinstance(errors, list) else errors
                 logger.warning(
                     "elasticsearch_storage.bulk_errors",
-                    error_count=len(errors),
+                    error_count=error_count,
                 )
             return success
         except Exception as e:

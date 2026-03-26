@@ -2,6 +2,7 @@
 Modèles de données pour l'agent SRE
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, Dict, List, Optional
@@ -75,8 +76,6 @@ class StoredRecord(BaseModel):
 
 
 # Legacy dataclass models kept for backward compatibility
-from dataclasses import dataclass, field
-
 
 class AlertSeverity(IntEnum):
     """Niveaux de sévérité des alertes"""
