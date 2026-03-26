@@ -1,12 +1,12 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 from httpx import AsyncClient, ASGITransport
 
 from src.api.routes import create_app
 from src.config import Config
-from src.models import Anomaly, AnalysisResult, Severity
+from src.models import AnalysisResult
 
 
 @pytest.fixture

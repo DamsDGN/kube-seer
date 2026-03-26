@@ -1,9 +1,7 @@
 import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 from src.analyzer.logs import LogAnalyzer
 from src.config import Config
-from src.models import Severity
 from src.storage.base import BaseStorage
 
 
@@ -101,7 +99,8 @@ class TestLogAnalyzerML:
             logs.append({
                 "timestamp": f"2026-01-15T10:{i:02d}:00Z",
                 "kubernetes": {"pod_name": f"pod-{i % 3}", "namespace_name": "default"},
-                "log": f"{level}: Processing request {i} {'failed' if level == 'ERROR' else 'success'}",
+                "log": f"{level}: Processing request {i} "
+                       f"{'failed' if level == 'ERROR' else 'success'}",
             })
         mock_storage.query = AsyncMock(return_value=logs)
         await analyzer.update_model()

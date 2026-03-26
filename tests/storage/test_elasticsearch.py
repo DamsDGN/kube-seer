@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 from src.storage.elasticsearch import ElasticsearchStorage
 from src.config import Config

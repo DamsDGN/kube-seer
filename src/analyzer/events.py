@@ -34,7 +34,9 @@ class EventAnalyzer(BaseAnalyzer):
     def __init__(self, config: Config):
         self._config = config
 
-    async def analyze(self, events: List[KubernetesEvent]) -> List[Anomaly]:
+    async def analyze(  # type: ignore[override]
+        self, events: List[KubernetesEvent]
+    ) -> List[Anomaly]:
         anomalies: List[Anomaly] = []
         anomalies.extend(self._check_patterns(events))
         anomalies.extend(self._check_frequency(events))
@@ -48,7 +50,10 @@ class EventAnalyzer(BaseAnalyzer):
         seen: Set[str] = set()
         for event in events:
             if event.reason in CRITICAL_REASONS:
-                key = f"{event.reason}:{event.involved_object_namespace}/{event.involved_object_name}"
+                key = (
+                    f"{event.reason}:"
+                    f"{event.involved_object_namespace}/{event.involved_object_name}"
+                )
                 if key in seen:
                     continue
                 seen.add(key)
@@ -62,7 +67,11 @@ class EventAnalyzer(BaseAnalyzer):
                     namespace=event.involved_object_namespace,
                     description=f"{event.reason}: {event.message}",
                     score=1.0 if severity == Severity.CRITICAL else 0.7,
-                    details={"reason": event.reason, "count": event.count, "event_type": event.event_type},
+                    details={
+                        "reason": event.reason,
+                        "count": event.count,
+                        "event_type": event.event_type,
+                    },
                     timestamp=event.last_timestamp,
                 ))
         return anomalies
@@ -78,7 +87,9 @@ class EventAnalyzer(BaseAnalyzer):
         anomalies = []
         for resource_key, count in resource_counts.items():
             if count >= EVENT_BURST_THRESHOLD:
-                namespace, name = resource_key.split("/", 1) if "/" in resource_key else ("", resource_key)
+                namespace, name = (
+                    resource_key.split("/", 1) if "/" in resource_key else ("", resource_key)
+                )
                 anomalies.append(Anomaly(
                     anomaly_id=str(uuid.uuid4()),
                     source="events",

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 
 import numpy as np
@@ -29,7 +29,7 @@ class MetricsAnalyzer(BaseAnalyzer):
         self._pod_buffer: List[List[float]] = []
         self._pod_samples_count = 0
 
-    async def analyze(
+    async def analyze(  # type: ignore[override]
         self, node_metrics: List[NodeMetrics], pod_metrics: List[PodMetrics]
     ) -> List[Anomaly]:
         anomalies: List[Anomaly] = []
@@ -39,7 +39,7 @@ class MetricsAnalyzer(BaseAnalyzer):
         anomalies.extend(self._check_pod_ml(pod_metrics))
         return anomalies
 
-    async def update_model(
+    async def update_model(  # type: ignore[override]
         self, node_metrics: List[NodeMetrics], pod_metrics: List[PodMetrics]
     ) -> None:
         for node in node_metrics:
@@ -205,7 +205,11 @@ class MetricsAnalyzer(BaseAnalyzer):
                     namespace="",
                     description=f"ML anomaly detected on node {node.node_name}",
                     score=max(0.0, min(1.0, -scores[i])),
-                    details={"cpu": node.cpu_usage_percent, "memory": node.memory_usage_percent, "disk": node.disk_usage_percent},
+                    details={
+                        "cpu": node.cpu_usage_percent,
+                        "memory": node.memory_usage_percent,
+                        "disk": node.disk_usage_percent,
+                    },
                     timestamp=node.timestamp,
                 ))
         return anomalies
@@ -229,7 +233,11 @@ class MetricsAnalyzer(BaseAnalyzer):
                     namespace=pod.namespace,
                     description=f"ML anomaly detected on pod {pod.pod_name}",
                     score=max(0.0, min(1.0, -scores[i])),
-                    details={"cpu_millicores": pod.cpu_usage_millicores, "memory_bytes": pod.memory_usage_bytes, "restarts": pod.restart_count},
+                    details={
+                        "cpu_millicores": pod.cpu_usage_millicores,
+                        "memory_bytes": pod.memory_usage_bytes,
+                        "restarts": pod.restart_count,
+                    },
                     timestamp=pod.timestamp,
                 ))
         return anomalies
