@@ -155,6 +155,27 @@ class TestAnalyzeEndpoint:
         mock_agent.run_cycle.assert_awaited_once()
 
 
+class TestIncidentsEndpoint:
+    @pytest.mark.asyncio
+    async def test_incidents_from_last_analysis(self, client, mock_agent):
+        mock_agent._last_analysis = AnalysisResult(
+            anomalies=[], incidents=[],
+            analysis_timestamp=datetime(2026, 1, 15, 10, 30, tzinfo=timezone.utc),
+        )
+        resp = await client.get("/incidents")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["incidents"] == []
+
+    @pytest.mark.asyncio
+    async def test_incidents_no_analysis_yet(self, client, mock_agent):
+        mock_agent._last_analysis = None
+        resp = await client.get("/incidents")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["incidents"] == []
+
+
 class TestAlertStatsEndpoint:
     @pytest.mark.asyncio
     async def test_alert_stats(self, client, mock_agent):
