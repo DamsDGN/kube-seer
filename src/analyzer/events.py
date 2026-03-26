@@ -58,22 +58,24 @@ class EventAnalyzer(BaseAnalyzer):
                     continue
                 seen.add(key)
                 severity = CRITICAL_REASONS[event.reason]
-                anomalies.append(Anomaly(
-                    anomaly_id=str(uuid.uuid4()),
-                    source="events",
-                    severity=severity,
-                    resource_type=event.involved_object_kind.lower(),
-                    resource_name=event.involved_object_name,
-                    namespace=event.involved_object_namespace,
-                    description=f"{event.reason}: {event.message}",
-                    score=1.0 if severity == Severity.CRITICAL else 0.7,
-                    details={
-                        "reason": event.reason,
-                        "count": event.count,
-                        "event_type": event.event_type,
-                    },
-                    timestamp=event.last_timestamp,
-                ))
+                anomalies.append(
+                    Anomaly(
+                        anomaly_id=str(uuid.uuid4()),
+                        source="events",
+                        severity=severity,
+                        resource_type=event.involved_object_kind.lower(),
+                        resource_name=event.involved_object_name,
+                        namespace=event.involved_object_namespace,
+                        description=f"{event.reason}: {event.message}",
+                        score=1.0 if severity == Severity.CRITICAL else 0.7,
+                        details={
+                            "reason": event.reason,
+                            "count": event.count,
+                            "event_type": event.event_type,
+                        },
+                        timestamp=event.last_timestamp,
+                    )
+                )
         return anomalies
 
     def _check_frequency(self, events: List[KubernetesEvent]) -> List[Anomaly]:
@@ -88,18 +90,22 @@ class EventAnalyzer(BaseAnalyzer):
         for resource_key, count in resource_counts.items():
             if count >= EVENT_BURST_THRESHOLD:
                 namespace, name = (
-                    resource_key.split("/", 1) if "/" in resource_key else ("", resource_key)
+                    resource_key.split("/", 1)
+                    if "/" in resource_key
+                    else ("", resource_key)
                 )
-                anomalies.append(Anomaly(
-                    anomaly_id=str(uuid.uuid4()),
-                    source="events",
-                    severity=Severity.WARNING,
-                    resource_type="pod",
-                    resource_name=name,
-                    namespace=namespace,
-                    description=f"Event burst: {count} warning events",
-                    score=min(count / 30.0, 1.0),
-                    details={"warning_event_count": count},
-                    timestamp=events[-1].last_timestamp,
-                ))
+                anomalies.append(
+                    Anomaly(
+                        anomaly_id=str(uuid.uuid4()),
+                        source="events",
+                        severity=Severity.WARNING,
+                        resource_type="pod",
+                        resource_name=name,
+                        namespace=namespace,
+                        description=f"Event burst: {count} warning events",
+                        score=min(count / 30.0, 1.0),
+                        details={"warning_event_count": count},
+                        timestamp=events[-1].last_timestamp,
+                    )
+                )
         return anomalies
