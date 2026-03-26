@@ -10,7 +10,7 @@ from src.models import (
     KubernetesEvent,
     ResourceState,
 )
-from src.models import Anomaly, AnalysisResult, Severity
+from src.models import Anomaly, AnalysisResult, Incident, Severity
 
 
 @pytest.fixture
@@ -239,6 +239,30 @@ class TestSREAgentCycleWithAnalysis:
         agent.collect.assert_awaited_once()
         agent.analyze.assert_awaited_once()
         agent.store.assert_awaited_once()
+
+
+class TestSREAgentCorrelation:
+    @pytest.mark.asyncio
+    async def test_analyze_includes_correlation(self, agent, sample_timestamp):
+        anomaly = Anomaly(
+            anomaly_id="a-001", source="metrics", severity=Severity.WARNING,
+            resource_type="node", resource_name="node-1", namespace="",
+            description="CPU warning", score=0.7, details={}, timestamp=sample_timestamp,
+        )
+        agent._metrics_analyzer = AsyncMock()
+        agent._metrics_analyzer.analyze = AsyncMock(return_value=[anomaly])
+        agent._event_analyzer = AsyncMock()
+        agent._event_analyzer.analyze = AsyncMock(return_value=[])
+        agent._log_analyzer = AsyncMock()
+        agent._log_analyzer.analyze = AsyncMock(return_value=[])
+
+        data = CollectedData(
+            node_metrics=[], pod_metrics=[], events=[], resource_states=[],
+            collection_timestamp=sample_timestamp,
+        )
+        result = await agent.analyze(data)
+        assert len(result.incidents) >= 1
+        assert result.incidents[0].anomalies[0].anomaly_id == "a-001"
 
 
 class TestSREAgentAlerts:

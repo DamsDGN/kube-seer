@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import structlog
 
+from src.analyzer.correlator import Correlator
 from src.analyzer.events import EventAnalyzer
 from src.analyzer.logs import LogAnalyzer
 from src.analyzer.metrics import MetricsAnalyzer
@@ -42,6 +43,7 @@ class SREAgent:
         self._metrics_analyzer = MetricsAnalyzer(config)
         self._event_analyzer = EventAnalyzer(config)
         self._log_analyzer = LogAnalyzer(config, self._storage)
+        self._correlator = Correlator(config)
         self._last_analysis: Optional[AnalysisResult] = None
         self._alerter = AlerterService(config)
 
@@ -174,8 +176,17 @@ class SREAgent:
         except Exception as e:
             logger.error("agent.log_analysis_error", error=str(e))
 
+        try:
+            incidents = await self._correlator.correlate(
+                anomalies=anomalies, data=data
+            )
+        except Exception as e:
+            logger.error("agent.correlation_error", error=str(e))
+            incidents = []
+
         result = AnalysisResult(
             anomalies=anomalies,
+            incidents=incidents,
             analysis_timestamp=data.collection_timestamp,
             metrics_analyzed=len(data.node_metrics) + len(data.pod_metrics),
             logs_analyzed=0,
