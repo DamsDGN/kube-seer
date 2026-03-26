@@ -52,7 +52,7 @@ class LogAnalyzer(BaseAnalyzer):
         self._log_buffer: List[str] = []
         self._log_count = 0
 
-    async def analyze(self) -> List[Anomaly]:
+    async def analyze(self) -> List[Anomaly]:  # type: ignore[override]
         logs = await self._fetch_logs()
         if not logs:
             return []

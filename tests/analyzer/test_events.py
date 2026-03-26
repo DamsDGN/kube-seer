@@ -1,5 +1,4 @@
 import pytest
-from datetime import datetime, timezone, timedelta
 from src.analyzer.events import EventAnalyzer
 from src.config import Config
 from src.models import KubernetesEvent, Severity

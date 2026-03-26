@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 
 from src.agent import SREAgent
 from src.config import Config
@@ -10,7 +9,6 @@ from src.models import (
     PodMetrics,
     KubernetesEvent,
     ResourceState,
-    StoredRecord,
 )
 from src.models import Anomaly, AnalysisResult, Severity
 

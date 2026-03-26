@@ -1,5 +1,3 @@
-import pytest
-from datetime import datetime, timezone
 from src.models import (
     Severity,
     NodeMetrics,

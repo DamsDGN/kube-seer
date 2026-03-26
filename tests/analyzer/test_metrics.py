@@ -1,8 +1,7 @@
 import pytest
-from datetime import datetime, timezone
 from src.analyzer.metrics import MetricsAnalyzer
 from src.config import Config
-from src.models import NodeMetrics, PodMetrics, Anomaly, Severity
+from src.models import NodeMetrics, PodMetrics, Severity
 
 
 @pytest.fixture
