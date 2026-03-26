@@ -129,3 +129,6 @@ kind-config.yaml
 secrets/
 credentials/
 *.secret
+
+# Git worktrees
+.worktrees/

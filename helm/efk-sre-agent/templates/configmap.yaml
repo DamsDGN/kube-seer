@@ -1,32 +1,36 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}-config
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "efk-sre-agent.fullname" . }}
   labels:
     {{- include "efk-sre-agent.labels" . | nindent 4 }}
 data:
-  ELASTICSEARCH_URL: {{ .Values.config.elasticsearch.url | quote }}
-  ELASTICSEARCH_USER: {{ .Values.config.elasticsearch.user | quote }}
-  METRICS_INDEX: {{ .Values.config.indices.metrics | quote }}
-  LOGS_INDEX: {{ .Values.config.indices.logs | quote }}
-  K8S_IN_CLUSTER: {{ .Values.config.kubernetes.inCluster | quote }}
-  K8S_NAMESPACE: {{ .Values.config.kubernetes.namespace | quote }}
-  ANALYSIS_INTERVAL: {{ .Values.config.analysis.interval | quote }}
-  ANOMALY_THRESHOLD: {{ .Values.config.analysis.anomalyThreshold | quote }}
-  CPU_THRESHOLD_WARNING: {{ .Values.config.thresholds.cpu.warning | quote }}
-  CPU_THRESHOLD_CRITICAL: {{ .Values.config.thresholds.cpu.critical | quote }}
-  MEMORY_THRESHOLD_WARNING: {{ .Values.config.thresholds.memory.warning | quote }}
-  MEMORY_THRESHOLD_CRITICAL: {{ .Values.config.thresholds.memory.critical | quote }}
-  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
-  MODEL_RETRAIN_INTERVAL: {{ .Values.config.models.retrainInterval | quote }}
-  MODEL_WINDOW_SIZE: {{ .Values.config.models.windowSize | quote }}
-  {{- if .Values.alerting.webhook.enabled }}
-  WEBHOOK_URL: {{ .Values.alerting.webhook.url | quote }}
-  {{- end }}
-  {{- if .Values.alerting.email.enabled }}
-  EMAIL_SMTP_SERVER: {{ .Values.alerting.email.smtpServer | quote }}
-  EMAIL_SMTP_PORT: {{ .Values.alerting.email.smtpPort | quote }}
-  EMAIL_USERNAME: {{ .Values.alerting.email.username | quote }}
-  EMAIL_RECIPIENTS: {{ .Values.alerting.email.recipients | quote }}
-  {{- end }}
+  ELASTICSEARCH_URL: {{ .Values.elasticsearch.url | quote }}
+  ELASTICSEARCH_USERNAME: {{ .Values.elasticsearch.username | quote }}
+  ELASTICSEARCH_INDICES_METRICS: {{ .Values.elasticsearch.indices.metrics | quote }}
+  ELASTICSEARCH_INDICES_LOGS: {{ .Values.elasticsearch.indices.logs | quote }}
+  ELASTICSEARCH_INDICES_ANOMALIES: {{ .Values.elasticsearch.indices.anomalies | quote }}
+  AGENT_ANALYSIS_INTERVAL: {{ .Values.agent.analysisInterval | quote }}
+  AGENT_LOG_LEVEL: {{ .Values.agent.logLevel | quote }}
+  COLLECTORS_PROMETHEUS_ENABLED: {{ .Values.collectors.prometheus.enabled | quote }}
+  COLLECTORS_PROMETHEUS_URL: {{ .Values.collectors.prometheus.url | quote }}
+  COLLECTORS_METRICS_SERVER_ENABLED: {{ .Values.collectors.metricsServer.enabled | quote }}
+  COLLECTORS_K8S_API_ENABLED: {{ .Values.collectors.kubernetesApi.enabled | quote }}
+  COLLECTORS_K8S_API_WATCH_EVENTS: {{ .Values.collectors.kubernetesApi.watchEvents | quote }}
+  THRESHOLDS_CPU_WARNING: {{ .Values.thresholds.cpu.warning | quote }}
+  THRESHOLDS_CPU_CRITICAL: {{ .Values.thresholds.cpu.critical | quote }}
+  THRESHOLDS_MEMORY_WARNING: {{ .Values.thresholds.memory.warning | quote }}
+  THRESHOLDS_MEMORY_CRITICAL: {{ .Values.thresholds.memory.critical | quote }}
+  THRESHOLDS_DISK_WARNING: {{ .Values.thresholds.disk.warning | quote }}
+  THRESHOLDS_DISK_CRITICAL: {{ .Values.thresholds.disk.critical | quote }}
+  ML_RETRAIN_INTERVAL: {{ .Values.ml.retrainInterval | quote }}
+  ML_WINDOW_SIZE: {{ .Values.ml.windowSize | quote }}
+  ML_ANOMALY_THRESHOLD: {{ .Values.ml.anomalyThreshold | quote }}
+  INTELLIGENCE_ENABLED: {{ .Values.intelligence.enabled | quote }}
+  INTELLIGENCE_PROVIDER: {{ .Values.intelligence.provider | quote }}
+  INTELLIGENCE_API_URL: {{ .Values.intelligence.apiUrl | quote }}
+  INTELLIGENCE_MODEL: {{ .Values.intelligence.model | quote }}
+  ALERTER_ALERTMANAGER_ENABLED: {{ .Values.alerter.alertmanager.enabled | quote }}
+  ALERTER_ALERTMANAGER_URL: {{ .Values.alerter.alertmanager.url | quote }}
+  ALERTER_FALLBACK_WEBHOOK_ENABLED: {{ .Values.alerter.fallback.webhook.enabled | quote }}
+  ALERTER_FALLBACK_WEBHOOK_URL: {{ .Values.alerter.fallback.webhook.url | quote }}
