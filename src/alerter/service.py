@@ -90,7 +90,8 @@ class AlerterService:
 
     def _cleanup_cache(self, now: float) -> None:
         expired = [
-            k for k, v in self._dedup_cache.items()
+            k
+            for k, v in self._dedup_cache.items()
             if (now - v) > DEDUP_COOLDOWN_SECONDS * 2
         ]
         for k in expired:

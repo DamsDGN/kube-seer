@@ -24,13 +24,19 @@ class SREAgent:
         self._running = False
 
         self._prometheus: Optional[PrometheusCollector] = (
-            PrometheusCollector(config) if config.collectors_prometheus_enabled else None
+            PrometheusCollector(config)
+            if config.collectors_prometheus_enabled
+            else None
         )
         self._metrics_server: Optional[MetricsServerCollector] = (
-            MetricsServerCollector(config) if config.collectors_metrics_server_enabled else None
+            MetricsServerCollector(config)
+            if config.collectors_metrics_server_enabled
+            else None
         )
         self._k8s_api: Optional[KubernetesApiCollector] = (
-            KubernetesApiCollector(config) if config.collectors_k8s_api_enabled else None
+            KubernetesApiCollector(config)
+            if config.collectors_k8s_api_enabled
+            else None
         )
         self._storage = ElasticsearchStorage(config)
         self._metrics_analyzer = MetricsAnalyzer(config)

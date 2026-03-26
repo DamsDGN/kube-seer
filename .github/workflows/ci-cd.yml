@@ -90,7 +90,7 @@ jobs:
     - name: 📋 Template Helm chart
       run: |
         helm template test ./helm/efk-sre-agent/ \
-          --values ./helm/efk-sre-agent/examples/values-dev.yaml > /dev/null
+          --set elasticsearch.url=http://elasticsearch:9200 > /dev/null
 
   # Test de build Docker pour les PR (sans push)
   build-test:

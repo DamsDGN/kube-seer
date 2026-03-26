@@ -10,8 +10,12 @@ from src.models import NodeMetrics, PodMetrics
 logger = structlog.get_logger()
 
 # PromQL queries
-NODE_CPU_QUERY = '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'
-NODE_MEMORY_QUERY = "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
+NODE_CPU_QUERY = (
+    '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'
+)
+NODE_MEMORY_QUERY = (
+    "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
+)
 NODE_DISK_QUERY = (
     '(1 - (node_filesystem_avail_bytes{mountpoint="/"}'
     ' / node_filesystem_size_bytes{mountpoint="/"})) * 100'
@@ -19,7 +23,9 @@ NODE_DISK_QUERY = (
 NODE_NETWORK_RX_QUERY = "rate(node_network_receive_bytes_total[5m])"
 NODE_NETWORK_TX_QUERY = "rate(node_network_transmit_bytes_total[5m])"
 
-POD_CPU_QUERY = "sum by (pod, namespace, node) (rate(container_cpu_usage_seconds_total[5m])) * 1000"
+POD_CPU_QUERY = (
+    "sum by (pod, namespace, node) (rate(container_cpu_usage_seconds_total[5m])) * 1000"
+)
 POD_MEMORY_QUERY = "sum by (pod, namespace, node) (container_memory_working_set_bytes)"
 POD_RESTART_QUERY = "sum by (pod, namespace) (kube_pod_container_status_restarts_total)"
 
@@ -52,9 +58,7 @@ class PrometheusCollector(MetricsCollector):
         if not self._client:
             return []
         try:
-            resp = await self._client.get(
-                "/api/v1/query", params={"query": promql}
-            )
+            resp = await self._client.get("/api/v1/query", params={"query": promql})
             if resp.status_code != 200:
                 logger.warning(
                     "prometheus_collector.query_failed",
@@ -113,9 +117,7 @@ class PrometheusCollector(MetricsCollector):
             )
         return nodes
 
-    async def collect_pod_metrics(
-        self, namespace: str = ""
-    ) -> List[PodMetrics]:
+    async def collect_pod_metrics(self, namespace: str = "") -> List[PodMetrics]:
         ns_filter = f'namespace="{namespace}"' if namespace else ""
 
         cpu_query = POD_CPU_QUERY

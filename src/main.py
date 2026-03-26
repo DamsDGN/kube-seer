@@ -16,9 +16,11 @@ def setup_logging(log_level: str) -> None:
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer()
-            if os.getenv("LOG_FORMAT") == "console"
-            else structlog.processors.JSONRenderer(),
+            (
+                structlog.dev.ConsoleRenderer()
+                if os.getenv("LOG_FORMAT") == "console"
+                else structlog.processors.JSONRenderer()
+            ),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(log_level),
     )
@@ -49,7 +51,9 @@ async def main() -> None:
             "COLLECTORS_METRICS_SERVER_ENABLED", "true"
         ),
         collectors_k8s_api_enabled=_bool("COLLECTORS_K8S_API_ENABLED", "true"),
-        collectors_k8s_api_watch_events=_bool("COLLECTORS_K8S_API_WATCH_EVENTS", "true"),
+        collectors_k8s_api_watch_events=_bool(
+            "COLLECTORS_K8S_API_WATCH_EVENTS", "true"
+        ),
         thresholds_cpu_warning=float(os.getenv("THRESHOLDS_CPU_WARNING", "70")),
         thresholds_cpu_critical=float(os.getenv("THRESHOLDS_CPU_CRITICAL", "85")),
         thresholds_memory_warning=float(os.getenv("THRESHOLDS_MEMORY_WARNING", "70")),

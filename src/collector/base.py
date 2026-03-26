@@ -29,21 +29,15 @@ class MetricsCollector(BaseCollector):
         """Collect metrics for all nodes."""
 
     @abstractmethod
-    async def collect_pod_metrics(
-        self, namespace: str = ""
-    ) -> List[PodMetrics]:
+    async def collect_pod_metrics(self, namespace: str = "") -> List[PodMetrics]:
         """Collect metrics for pods. If namespace is empty, collect from all namespaces."""
 
 
 class StateCollector(BaseCollector):
     @abstractmethod
-    async def collect_events(
-        self, namespace: str = ""
-    ) -> List[KubernetesEvent]:
+    async def collect_events(self, namespace: str = "") -> List[KubernetesEvent]:
         """Collect Kubernetes events."""
 
     @abstractmethod
-    async def collect_resource_states(
-        self, namespace: str = ""
-    ) -> List[ResourceState]:
+    async def collect_resource_states(self, namespace: str = "") -> List[ResourceState]:
         """Collect state of deployments, statefulsets, daemonsets, jobs, etc."""

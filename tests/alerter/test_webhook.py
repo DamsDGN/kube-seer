@@ -21,9 +21,15 @@ def alerter(config):
 @pytest.fixture
 def anomaly(sample_timestamp):
     return Anomaly(
-        anomaly_id="a-001", source="metrics", severity=Severity.CRITICAL,
-        resource_type="node", resource_name="node-1", namespace="",
-        description="CPU critical", score=0.92, details={"cpu": 92.0},
+        anomaly_id="a-001",
+        source="metrics",
+        severity=Severity.CRITICAL,
+        resource_type="node",
+        resource_name="node-1",
+        namespace="",
+        description="CPU critical",
+        score=0.92,
+        details={"cpu": 92.0},
         timestamp=sample_timestamp,
     )
 
@@ -61,7 +67,9 @@ class TestWebhookSend:
 
     @pytest.mark.asyncio
     async def test_no_url_configured(self):
-        config = Config(elasticsearch_url="http://localhost:9200", alerter_fallback_webhook_url="")
+        config = Config(
+            elasticsearch_url="http://localhost:9200", alerter_fallback_webhook_url=""
+        )
         alerter = WebhookAlerter(config)
         count = await alerter.send([MagicMock()])
         assert count == 0
@@ -75,6 +83,8 @@ class TestWebhookHealth:
 
     @pytest.mark.asyncio
     async def test_unhealthy_no_url(self):
-        config = Config(elasticsearch_url="http://localhost:9200", alerter_fallback_webhook_url="")
+        config = Config(
+            elasticsearch_url="http://localhost:9200", alerter_fallback_webhook_url=""
+        )
         alerter = WebhookAlerter(config)
         assert await alerter.is_healthy() is False

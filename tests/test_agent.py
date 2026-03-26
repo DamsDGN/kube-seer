@@ -246,12 +246,17 @@ class TestSREAgentAlerts:
     async def test_run_cycle_sends_alerts(self, agent, sample_timestamp):
         agent.collect = AsyncMock(
             return_value=CollectedData(
-                node_metrics=[], pod_metrics=[], events=[], resource_states=[],
+                node_metrics=[],
+                pod_metrics=[],
+                events=[],
+                resource_states=[],
                 collection_timestamp=sample_timestamp,
             )
         )
         agent.analyze = AsyncMock(
-            return_value=AnalysisResult(anomalies=[], analysis_timestamp=sample_timestamp)
+            return_value=AnalysisResult(
+                anomalies=[], analysis_timestamp=sample_timestamp
+            )
         )
         agent.store = AsyncMock()
         agent.store_anomalies = AsyncMock()

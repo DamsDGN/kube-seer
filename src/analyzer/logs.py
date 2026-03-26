@@ -69,7 +69,7 @@ class LogAnalyzer(BaseAnalyzer):
         self._log_count += len(messages)
         if len(self._log_buffer) >= MIN_LOGS_FOR_CLUSTERING:
             self._train_clustering_model()
-            self._log_buffer = self._log_buffer[-self._config.ml_window_size:]
+            self._log_buffer = self._log_buffer[-self._config.ml_window_size :]
 
     async def _fetch_logs(self) -> List[Dict[str, Any]]:
         query = {
@@ -110,31 +110,31 @@ class LogAnalyzer(BaseAnalyzer):
                     key = f"{pattern_name}:{namespace}/{pod_name}"
                     seen_patterns[key] = seen_patterns.get(key, 0) + 1
                     if seen_patterns[key] == 1:
-                        anomalies.append(Anomaly(
-                            anomaly_id=str(uuid.uuid4()),
-                            source="logs",
-                            severity=severity,
-                            resource_type="pod",
-                            resource_name=pod_name,
-                            namespace=namespace,
-                            description=(
-                                f"Log pattern '{pattern_name}' detected: "
-                                f"{message[:200]}"
-                            ),
-                            score=1.0 if severity == Severity.CRITICAL else 0.7,
-                            details={
-                                "pattern": pattern_name,
-                                "sample_message": message[:500],
-                            },
-                            timestamp=datetime.now(timezone.utc),
-                        ))
+                        anomalies.append(
+                            Anomaly(
+                                anomaly_id=str(uuid.uuid4()),
+                                source="logs",
+                                severity=severity,
+                                resource_type="pod",
+                                resource_name=pod_name,
+                                namespace=namespace,
+                                description=(
+                                    f"Log pattern '{pattern_name}' detected: "
+                                    f"{message[:200]}"
+                                ),
+                                score=1.0 if severity == Severity.CRITICAL else 0.7,
+                                details={
+                                    "pattern": pattern_name,
+                                    "sample_message": message[:500],
+                                },
+                                timestamp=datetime.now(timezone.utc),
+                            )
+                        )
         return anomalies
 
     def _train_clustering_model(self) -> None:
         try:
-            self._vectorizer = TfidfVectorizer(
-                max_features=1000, ngram_range=(1, 2)
-            )
+            self._vectorizer = TfidfVectorizer(max_features=1000, ngram_range=(1, 2))
             tfidf_matrix = self._vectorizer.fit_transform(self._log_buffer)
             clustering = DBSCAN(eps=0.5, min_samples=3, metric="cosine")
             clustering.fit(tfidf_matrix.toarray())
