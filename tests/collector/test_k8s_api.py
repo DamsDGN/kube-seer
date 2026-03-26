@@ -45,7 +45,7 @@ class TestKubernetesApiConnect:
     @pytest.mark.asyncio
     async def test_connect(self, collector):
         with patch("src.collector.k8s_api.config") as mock_config:
-            with patch("src.collector.k8s_api.client") as mock_client:
+            with patch("src.collector.k8s_api.client"):
                 mock_config.load_incluster_config = MagicMock()
                 await collector.connect()
                 assert collector._core_api is not None

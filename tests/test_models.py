@@ -1,5 +1,3 @@
-import pytest
-from datetime import datetime, timezone
 from src.models import (
     Severity,
     NodeMetrics,
@@ -8,6 +6,8 @@ from src.models import (
     ResourceState,
     CollectedData,
     StoredRecord,
+    Anomaly,
+    AnalysisResult,
 )
 
 
@@ -120,3 +120,74 @@ class TestStoredRecord:
         )
         assert record.record_type == "node_metrics"
         assert record.cluster_name == "prod-01"
+
+
+class TestAnomaly:
+    def test_creation(self, sample_timestamp):
+        anomaly = Anomaly(
+            anomaly_id="a-001",
+            source="metrics",
+            severity=Severity.WARNING,
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            description="CPU usage anomaly detected",
+            score=0.85,
+            details={"cpu_usage_percent": 92.3},
+            timestamp=sample_timestamp,
+        )
+        assert anomaly.anomaly_id == "a-001"
+        assert anomaly.severity == Severity.WARNING
+        assert anomaly.score == 0.85
+
+    def test_to_dict(self, sample_timestamp):
+        anomaly = Anomaly(
+            anomaly_id="a-002",
+            source="events",
+            severity=Severity.CRITICAL,
+            resource_type="pod",
+            resource_name="web-abc",
+            namespace="default",
+            description="OOMKilled detected",
+            score=1.0,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        d = anomaly.model_dump()
+        assert d["anomaly_id"] == "a-002"
+        assert d["severity"] == 2
+
+
+class TestAnalysisResult:
+    def test_creation(self, sample_timestamp):
+        result = AnalysisResult(
+            anomalies=[],
+            analysis_timestamp=sample_timestamp,
+            metrics_analyzed=10,
+            logs_analyzed=50,
+            events_analyzed=5,
+        )
+        assert result.anomalies == []
+        assert result.metrics_analyzed == 10
+
+    def test_with_anomalies(self, sample_timestamp):
+        anomaly = Anomaly(
+            anomaly_id="a-001",
+            source="metrics",
+            severity=Severity.WARNING,
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            description="test",
+            score=0.5,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        result = AnalysisResult(
+            anomalies=[anomaly],
+            analysis_timestamp=sample_timestamp,
+            metrics_analyzed=1,
+            logs_analyzed=0,
+            events_analyzed=0,
+        )
+        assert len(result.anomalies) == 1
