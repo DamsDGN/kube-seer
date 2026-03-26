@@ -74,7 +74,9 @@ class TestKubernetesApiEvents:
 
         events = await collector.collect_events(namespace="production")
         assert len(events) == 1
-        mock_core.list_namespaced_event.assert_called_once_with("production")
+        mock_core.list_namespaced_event.assert_called_once_with(
+            "production", field_selector="type=Warning"
+        )
 
 
 class TestKubernetesApiResourceStates:
@@ -104,7 +106,7 @@ class TestKubernetesApiHealthy:
     @pytest.mark.asyncio
     async def test_is_healthy_true(self, collector):
         mock_core = MagicMock()
-        mock_core.get_api_versions.return_value = MagicMock()
+        mock_core.list_namespace.return_value = MagicMock()
         collector._core_api = mock_core
         assert await collector.is_healthy() is True
 

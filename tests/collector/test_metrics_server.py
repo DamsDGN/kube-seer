@@ -59,7 +59,8 @@ class TestMetricsServerNodeMetrics:
         nodes = await collector.collect_node_metrics()
         assert len(nodes) == 1
         assert nodes[0].node_name == "node-1"
-        assert nodes[0].cpu_usage_percent > 0
+        # cpu_usage_percent is 0.0 since metrics-server provides raw usage only
+        assert nodes[0].cpu_usage_percent == 0.0
 
 
 class TestMetricsServerPodMetrics:

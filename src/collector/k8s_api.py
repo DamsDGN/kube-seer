@@ -1,3 +1,4 @@
+import asyncio
 import structlog
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -37,7 +38,7 @@ class KubernetesApiCollector(StateCollector):
         if not self._core_api:
             return False
         try:
-            self._core_api.get_api_versions()
+            await asyncio.to_thread(self._core_api.list_namespace, limit=1)
             return True
         except Exception:
             return False
@@ -49,9 +50,16 @@ class KubernetesApiCollector(StateCollector):
             return []
         try:
             if namespace:
-                result = self._core_api.list_namespaced_event(namespace)
+                result = await asyncio.to_thread(
+                    self._core_api.list_namespaced_event,
+                    namespace,
+                    field_selector="type=Warning",
+                )
             else:
-                result = self._core_api.list_event_for_all_namespaces()
+                result = await asyncio.to_thread(
+                    self._core_api.list_event_for_all_namespaces,
+                    field_selector="type=Warning",
+                )
         except Exception as e:
             logger.error("k8s_api_collector.events_error", error=str(e))
             return []
@@ -94,9 +102,13 @@ class KubernetesApiCollector(StateCollector):
             return []
         try:
             if namespace:
-                result = self._apps_api.list_namespaced_deployment(namespace)
+                result = await asyncio.to_thread(
+                    self._apps_api.list_namespaced_deployment, namespace
+                )
             else:
-                result = self._apps_api.list_deployment_for_all_namespaces()
+                result = await asyncio.to_thread(
+                    self._apps_api.list_deployment_for_all_namespaces
+                )
         except Exception as e:
             logger.error("k8s_api_collector.deployments_error", error=str(e))
             return []
@@ -121,9 +133,13 @@ class KubernetesApiCollector(StateCollector):
             return []
         try:
             if namespace:
-                result = self._apps_api.list_namespaced_stateful_set(namespace)
+                result = await asyncio.to_thread(
+                    self._apps_api.list_namespaced_stateful_set, namespace
+                )
             else:
-                result = self._apps_api.list_stateful_set_for_all_namespaces()
+                result = await asyncio.to_thread(
+                    self._apps_api.list_stateful_set_for_all_namespaces
+                )
         except Exception as e:
             logger.error("k8s_api_collector.statefulsets_error", error=str(e))
             return []
@@ -148,9 +164,13 @@ class KubernetesApiCollector(StateCollector):
             return []
         try:
             if namespace:
-                result = self._apps_api.list_namespaced_daemon_set(namespace)
+                result = await asyncio.to_thread(
+                    self._apps_api.list_namespaced_daemon_set, namespace
+                )
             else:
-                result = self._apps_api.list_daemon_set_for_all_namespaces()
+                result = await asyncio.to_thread(
+                    self._apps_api.list_daemon_set_for_all_namespaces
+                )
         except Exception as e:
             logger.error("k8s_api_collector.daemonsets_error", error=str(e))
             return []
@@ -175,9 +195,13 @@ class KubernetesApiCollector(StateCollector):
             return []
         try:
             if namespace:
-                result = self._batch_api.list_namespaced_job(namespace)
+                result = await asyncio.to_thread(
+                    self._batch_api.list_namespaced_job, namespace
+                )
             else:
-                result = self._batch_api.list_job_for_all_namespaces()
+                result = await asyncio.to_thread(
+                    self._batch_api.list_job_for_all_namespaces
+                )
         except Exception as e:
             logger.error("k8s_api_collector.jobs_error", error=str(e))
             return []
@@ -202,9 +226,13 @@ class KubernetesApiCollector(StateCollector):
             return []
         try:
             if namespace:
-                result = self._batch_api.list_namespaced_cron_job(namespace)
+                result = await asyncio.to_thread(
+                    self._batch_api.list_namespaced_cron_job, namespace
+                )
             else:
-                result = self._batch_api.list_cron_job_for_all_namespaces()
+                result = await asyncio.to_thread(
+                    self._batch_api.list_cron_job_for_all_namespaces
+                )
         except Exception as e:
             logger.error("k8s_api_collector.cronjobs_error", error=str(e))
             return []
