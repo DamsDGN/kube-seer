@@ -89,7 +89,21 @@ class Anomaly(BaseModel):
 
 class AnalysisResult(BaseModel):
     anomalies: List[Anomaly]
+    incidents: List["Incident"] = []
     analysis_timestamp: datetime
     metrics_analyzed: int = 0
     logs_analyzed: int = 0
     events_analyzed: int = 0
+
+
+class Incident(BaseModel):
+    incident_id: str
+    anomalies: List[Anomaly]
+    severity: Severity
+    score: float
+    description: str
+    resources: List[str]
+    timestamp: datetime
+
+
+AnalysisResult.model_rebuild()
