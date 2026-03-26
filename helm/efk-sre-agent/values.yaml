@@ -1,149 +1,99 @@
-# Configuration par défaut de l'agent IA SRE EFK
+# Agent
+agent:
+  analysisInterval: 300
+  logLevel: INFO
 
-# Image de l'agent
+# Elasticsearch (external prerequisite)
+elasticsearch:
+  url: ""
+  username: ""
+  password: ""
+  secretRef: ""
+  indices:
+    metrics: "sre-metrics"
+    logs: "sre-logs"
+    anomalies: "sre-anomalies"
+
+# Collectors
+collectors:
+  prometheus:
+    enabled: true
+    url: "http://prometheus-server:9090"
+  metricsServer:
+    enabled: true
+  kubernetesApi:
+    enabled: true
+    watchEvents: true
+
+# Detection thresholds
+thresholds:
+  cpu:
+    warning: 70
+    critical: 85
+  memory:
+    warning: 70
+    critical: 85
+  disk:
+    warning: 80
+    critical: 90
+
+# ML
+ml:
+  retrainInterval: 3600
+  windowSize: 100
+  anomalyThreshold: 0.05
+
+# Intelligence (optional LLM)
+intelligence:
+  enabled: false
+  provider: ""
+  apiUrl: ""
+  apiKey: ""
+  apiKeySecretRef: ""
+  model: ""
+
+# Alerting
+alerter:
+  alertmanager:
+    enabled: true
+    url: "http://alertmanager:9093"
+  fallback:
+    webhook:
+      enabled: false
+      url: ""
+
+# Image
 image:
-  repository: efk-sre-agent
-  tag: "latest"
+  repository: damsdgn29/efk-sre-agent
+  tag: "2.0.0"
   pullPolicy: IfNotPresent
 
-# Replicas
-replicaCount: 1
-
-# Configuration de l'agent
-config:
-  # Elasticsearch
-  elasticsearch:
-    url: "http://elasticsearch.elastic-system.svc.cluster.local:9200"
-    user: "elastic"
-    # Le mot de passe sera lu depuis le secret elasticsearch-credentials
-    passwordSecret: "elasticsearch-credentials"
-    passwordKey: "password"
-  
-  # Index Elasticsearch
-  indices:
-    metrics: "metricbeat-*"
-    logs: "fluentd-*"
-  
-  # Kubernetes
-  kubernetes:
-    inCluster: true
-    namespace: "default"
-  
-  # Analyse
-  analysis:
-    interval: 300  # 5 minutes
-    anomalyThreshold: 0.05
-  
-  # Seuils d'alerte
-  thresholds:
-    cpu:
-      warning: 70.0
-      critical: 85.0
-    memory:
-      warning: 70.0
-      critical: 85.0
-  
-  # Logging
-  logLevel: "INFO"
-  
-  # Modèles ML
-  models:
-    retrainInterval: 3600  # 1 heure
-    windowSize: 100
-
-# Alerting (optionnel)
-alerting:
-  enabled: true
-  webhook:
-    enabled: false
-    url: ""
-  slack:
-    enabled: false
-    webhook: ""
-  email:
-    enabled: false
-    smtpServer: ""
-    smtpPort: 587
-    username: ""
-    recipients: ""
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
 
 # Service
 service:
   type: ClusterIP
   port: 8080
-  targetPort: 8080
 
-# Ingress (optionnel)
-ingress:
+# ServiceMonitor
+serviceMonitor:
   enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: efk-sre-agent.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
+  interval: 30s
 
-# Resources
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 250m
-    memory: 256Mi
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
 
-# Node selector
-nodeSelector: {}
-
-# Tolerations
-tolerations: []
-
-# Affinity
-affinity: {}
-
-# Security context
+# Security
 securityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Pod security context
-podSecurityContext:
-  fsGroup: 1000
-
-# Service account
-serviceAccount:
-  create: true
-  name: ""
-  annotations: {}
-
-# RBAC
-rbac:
-  create: true
-
-# Monitoring (Prometheus)
-monitoring:
-  enabled: true
-  serviceMonitor:
-    enabled: false  # Nécessite Prometheus Operator
-    interval: 30s
-    path: /metrics
-  prometheusRule:
-    enabled: false  # Nécessite Prometheus Operator
-
-# Autoscaling (optionnel)
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 80
-
-# Persistence pour les modèles ML
-persistence:
-  enabled: true
-  accessMode: ReadWriteOnce
-  size: 1Gi
-  storageClass: ""
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001

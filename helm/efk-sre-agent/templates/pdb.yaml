@@ -1,16 +1,13 @@
-{{- if .Values.serviceMonitor.enabled }}
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
 metadata:
   name: {{ include "efk-sre-agent.fullname" . }}
   labels:
     {{- include "efk-sre-agent.labels" . | nindent 4 }}
 spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
       {{- include "efk-sre-agent.selectorLabels" . | nindent 6 }}
-  endpoints:
-    - port: http
-      path: /metrics
-      interval: {{ .Values.serviceMonitor.interval }}
 {{- end }}
