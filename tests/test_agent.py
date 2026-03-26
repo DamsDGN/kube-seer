@@ -1,356 +1,160 @@
-"""
-Tests unitaires pour l'agent SRE
-"""
-
 import pytest
-import sys
-import os
-from datetime import datetime, UTC
-from unittest.mock import patch, Mock
+from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timezone
 
-# Ajouter le répertoire src au path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from config import Config  # noqa: E402
-from models import Metric, LogEntry, Alert  # noqa: E402
-from metrics_analyzer import MetricsAnalyzer  # noqa: E402
-from log_analyzer import LogAnalyzer  # noqa: E402
-from alerting import AlertManager  # noqa: E402
-from agent import SREAgent  # noqa: E402
+from src.agent import SREAgent
+from src.config import Config
+from src.models import (
+    CollectedData,
+    NodeMetrics,
+    PodMetrics,
+    KubernetesEvent,
+    ResourceState,
+    StoredRecord,
+)
 
 
 @pytest.fixture
 def config():
-    """Configuration de test"""
-    mock_config = Mock()
-    mock_config.elasticsearch_url = "http://localhost:9200"
-    mock_config.elasticsearch_user = "test"
-    mock_config.elasticsearch_password = "test"
-    mock_config.metrics_index = "test-metrics"
-    mock_config.logs_index = "test-logs"
-    mock_config.k8s_in_cluster = False
-    mock_config.k8s_namespace = "test"
-    mock_config.webhook_url = ""
-    mock_config.smtp_server = ""
-    mock_config.email_from = ""
-    mock_config.email_to = ""
-    mock_config.alert_cooldown = 300
-    # Seuils pour les métriques
-    mock_config.cpu_threshold_critical = 90.0
-    mock_config.cpu_threshold_warning = 80.0
-    mock_config.memory_threshold_critical = 90.0
-    mock_config.memory_threshold_warning = 80.0
-    mock_config.anomaly_threshold = 0.1
-    mock_config.model_window_size = 100
-    return mock_config
+    return Config(
+        elasticsearch_url="http://localhost:9200",
+        collectors_prometheus_enabled=True,
+        collectors_metrics_server_enabled=True,
+        collectors_k8s_api_enabled=True,
+    )
 
 
 @pytest.fixture
-def sample_metrics():
-    """Données de test pour les métriques"""
-    return [
-        Metric(
-            pod_name="test-pod-1",
-            cpu_usage=50000000,  # 50m cores
-            memory_usage=100 * 1024 * 1024,  # 100MB
-            cpu_peak=80000000,
-            memory_peak=120 * 1024 * 1024,
-            timestamp=datetime.now(UTC),
-        ),
-        Metric(
-            pod_name="test-pod-2",
-            cpu_usage=900000000,  # 900m cores (élevé)
-            memory_usage=800 * 1024 * 1024,  # 800MB (élevé)
-            cpu_peak=950000000,
-            memory_peak=850 * 1024 * 1024,
-            timestamp=datetime.now(UTC),
-        ),
-    ]
+def agent(config):
+    a = SREAgent(config)
+    a._prometheus = AsyncMock()
+    a._metrics_server = AsyncMock()
+    a._k8s_api = AsyncMock()
+    a._storage = AsyncMock()
+    return a
 
 
-@pytest.fixture
-def sample_logs():
-    """Données de test pour les logs"""
-    return [
-        LogEntry(
-            pod_name="test-pod-1",
-            namespace="default",
-            log_level="INFO",
-            message="Application started successfully",
-            timestamp=datetime.now(UTC),
-        ),
-        LogEntry(
-            pod_name="test-pod-2",
-            namespace="default",
-            log_level="ERROR",
-            message="Connection to database failed: timeout",
-            timestamp=datetime.now(UTC),
-        ),
-        LogEntry(
-            pod_name="test-pod-2",
-            namespace="default",
-            log_level="CRITICAL",
-            message="Out of memory: killed process",
-            timestamp=datetime.now(UTC),
-        ),
-    ]
-
-
-class TestConfig:
-    """Tests pour la configuration"""
-
-    def test_config_defaults(self):
-        """Test des valeurs par défaut de la configuration"""
-        config = Config()
-        assert config.analysis_interval == 300
-        assert config.cpu_threshold_warning == 70.0
-        assert config.anomaly_threshold == 0.05
-
-    def test_config_validation(self):
-        """Test de la validation de la configuration"""
-        # Test avec un interval trop bas
-        os.environ["ANALYSIS_INTERVAL"] = "30"
-        with pytest.raises(ValueError, match="ANALYSIS_INTERVAL doit être au moins 60"):
-            Config()
-
-        # Nettoyer l'environnement pour les autres tests
-        if "ANALYSIS_INTERVAL" in os.environ:
-            del os.environ["ANALYSIS_INTERVAL"]
-
-
-class TestMetricsAnalyzer:
-    """Tests pour l'analyseur de métriques"""
-
-    def test_extract_features(self, config, sample_metrics):
-        """Test d'extraction des features"""
-        analyzer = MetricsAnalyzer(config)
-        df = analyzer.extract_features(sample_metrics)
-
-        assert len(df) == 2
-        assert "cpu_usage" in df.columns
-        assert "memory_usage" in df.columns
-        assert "hour_of_day" in df.columns
-
-    @pytest.mark.asyncio
-    async def test_analyze_thresholds(self, config, sample_metrics):
-        """Test de l'analyse par seuils"""
-        analyzer = MetricsAnalyzer(config)
-        alerts = await analyzer.analyze(sample_metrics)
-
-        # Doit détecter des alertes CPU/mémoire élevées pour test-pod-2
-        assert len(alerts) > 0
-
-        cpu_alerts = [a for a in alerts if a.type == "cpu_anomaly"]
-        memory_alerts = [a for a in alerts if a.type == "memory_anomaly"]
-
-        assert len(cpu_alerts) > 0 or len(memory_alerts) > 0
-
-    def test_prepare_features(self, config, sample_metrics):
-        """Test de préparation des features"""
-        analyzer = MetricsAnalyzer(config)
-        df = analyzer.extract_features(sample_metrics)
-        features = analyzer.prepare_features(df)
-
-        assert features.shape[0] == 2
-        assert features.shape[1] == len(analyzer.feature_columns)
-
-
-class TestLogAnalyzer:
-    """Tests pour l'analyseur de logs"""
-
-    def test_load_error_patterns(self, config):
-        """Test du chargement des patterns d'erreurs"""
-        analyzer = LogAnalyzer(config)
-        patterns = analyzer.error_patterns
-
-        assert "oom_killer" in patterns
-        assert "database_error" in patterns
-        assert len(patterns["oom_killer"]) > 0
-
-    @pytest.mark.asyncio
-    async def test_analyze_patterns(self, config, sample_logs):
-        """Test de l'analyse par patterns"""
-        analyzer = LogAnalyzer(config)
-        alerts = await analyzer.analyze(sample_logs)
-
-        # Doit détecter l'erreur OOM
-        oom_alerts = [
-            a
-            for a in alerts
-            if "oom" in a.message.lower() or "memory" in a.message.lower()
-        ]
-        assert len(oom_alerts) > 0
-
-    def test_extract_error_signature(self, config):
-        """Test d'extraction de signature d'erreur"""
-        analyzer = LogAnalyzer(config)
-
-        message = "2023-10-08 12:34:56 ERROR: Connection failed to 192.168.1.100:5432"
-        signature = analyzer._extract_error_signature(message)
-
-        assert "ERROR" in signature
-        assert "Connection" in signature
-        assert "192.168.1.100" not in signature  # IPs supprimées
-
-
-class TestAlertManager:
-    """Tests pour le gestionnaire d'alertes"""
-
-    def test_rate_limiting(self, config):
-        """Test du rate limiting"""
-        manager = AlertManager(config)
-
-        alert = Alert(
-            type="test_alert",
-            severity="warning",
-            message="Test message",
-            timestamp=datetime.now(UTC),
-            metadata={"pod_name": "test-pod"},
-        )
-
-        # Premier appel - pas de rate limit
-        assert not manager._is_rate_limited(alert)
-
-        # Deuxième appel immédiat - rate limité
-        assert manager._is_rate_limited(alert)
-
-    @pytest.mark.asyncio
-    async def test_send_alert_without_channels(self, config):
-        """Test d'envoi d'alerte sans canaux configurés"""
-        manager = AlertManager(config)
-
-        alert = Alert(
-            type="test_alert",
-            severity="warning",
-            message="Test message",
-            timestamp=datetime.now(UTC),
-        )
-
-        # Ne doit pas lever d'exception
-        await manager.send_alert(alert)
-
-        # L'alerte doit être dans l'historique
-        assert len(manager.alert_history) == 1
-
-    def test_alert_stats(self, config):
-        """Test des statistiques d'alertes"""
-        manager = AlertManager(config)
-
-        # Ajouter quelques alertes
-        for i in range(5):
-            alert = Alert(
-                type="test_alert",
-                severity="warning" if i < 3 else "critical",
-                message=f"Test message {i}",
-                timestamp=datetime.now(UTC),
-            )
-            manager.alert_history.append(alert)
-
-        stats = manager.get_alert_stats()
-
-        assert stats["total_alerts"] == 5
-        assert stats["by_severity"]["warning"] == 3
-        assert stats["by_severity"]["critical"] == 2
-
-
-class TestSREAgent:
-    """Tests pour l'agent SRE principal"""
-
-    @pytest.mark.asyncio
-    async def test_agent_initialization(self, config):
-        """Test d'initialisation de l'agent"""
-        with patch("agent.Elasticsearch") as mock_es_class, patch(
-            "agent.config.load_incluster_config"
-        ), patch("agent.config.load_kube_config"), patch(
-            "agent.client.CoreV1Api"
-        ) as mock_k8s_class:
-
-            # Mock de l'instance Elasticsearch
-            mock_es_instance = mock_es_class.return_value
-            mock_es_instance.ping.return_value = True
-
-            agent = SREAgent(config)
-            await agent.initialize()
-
-            # Vérifier que Elasticsearch a été instancié
-            mock_es_class.assert_called_once()
-            mock_es_instance.ping.assert_called_once()
-
-            # Vérifier que Kubernetes a été instancié
-            mock_k8s_class.assert_called_once()
-
-            assert agent.es_client is not None
-            assert agent.k8s_client is not None
-
-    @pytest.mark.asyncio
-    async def test_correlate_anomalies(self, config):
-        """Test de corrélation des anomalies"""
+class TestSREAgentInit:
+    def test_init(self, config):
         agent = SREAgent(config)
+        assert agent._config is config
+        assert agent._running is False
 
-        metric_alerts = [
-            Alert(
-                type="cpu_anomaly",
-                severity="warning",
-                message="CPU élevé",
-                timestamp=datetime.now(UTC),
-                metadata={"pod_name": "test-pod-1"},
-            )
-        ]
 
-        log_alerts = [
-            Alert(
-                type="log_error",
-                severity="critical",
-                message="Erreur application",
-                timestamp=datetime.now(UTC),
-                metadata={"pod_name": "test-pod-1"},
-            )
-        ]
-
-        correlated = await agent.correlate_anomalies(metric_alerts, log_alerts)
-
-        # Doit détecter une corrélation
-        assert len(correlated) > 0
-        correlated_alert = next(
-            (a for a in correlated if a.type == "correlated_issue"), None
+class TestSREAgentCollect:
+    @pytest.mark.asyncio
+    async def test_collect_aggregates_all_sources(self, agent, sample_timestamp):
+        node = NodeMetrics(
+            node_name="node-1",
+            cpu_usage_percent=45.0,
+            memory_usage_percent=60.0,
+            disk_usage_percent=30.0,
+            network_rx_bytes=0,
+            network_tx_bytes=0,
+            conditions={},
+            timestamp=sample_timestamp,
         )
-        assert correlated_alert is not None
-        assert correlated_alert.severity == "critical"
+        pod = PodMetrics(
+            pod_name="web-abc",
+            namespace="default",
+            node_name="node-1",
+            cpu_usage_millicores=250,
+            memory_usage_bytes=134217728,
+            restart_count=0,
+            status="Running",
+            timestamp=sample_timestamp,
+        )
+        event = KubernetesEvent(
+            event_type="Warning",
+            reason="OOMKilled",
+            message="OOM",
+            involved_object_kind="Pod",
+            involved_object_name="web-abc",
+            involved_object_namespace="default",
+            count=1,
+            first_timestamp=sample_timestamp,
+            last_timestamp=sample_timestamp,
+        )
+        state = ResourceState(
+            kind="Deployment",
+            name="web",
+            namespace="default",
+            desired_replicas=3,
+            ready_replicas=3,
+            conditions={},
+            timestamp=sample_timestamp,
+        )
+
+        agent._prometheus.collect_node_metrics = AsyncMock(return_value=[node])
+        agent._prometheus.collect_pod_metrics = AsyncMock(return_value=[pod])
+        agent._metrics_server.collect_node_metrics = AsyncMock(return_value=[])
+        agent._metrics_server.collect_pod_metrics = AsyncMock(return_value=[])
+        agent._k8s_api.collect_events = AsyncMock(return_value=[event])
+        agent._k8s_api.collect_resource_states = AsyncMock(return_value=[state])
+
+        data = await agent.collect()
+        assert len(data.node_metrics) == 1
+        assert len(data.pod_metrics) == 1
+        assert len(data.events) == 1
+        assert len(data.resource_states) == 1
+
+    @pytest.mark.asyncio
+    async def test_collect_handles_disabled_collectors(self, config):
+        config_disabled = Config(
+            elasticsearch_url="http://localhost:9200",
+            collectors_prometheus_enabled=False,
+            collectors_metrics_server_enabled=False,
+            collectors_k8s_api_enabled=False,
+        )
+        agent = SREAgent(config_disabled)
+        data = await agent.collect()
+        assert data.node_metrics == []
+        assert data.pod_metrics == []
+        assert data.events == []
+        assert data.resource_states == []
 
 
-@pytest.mark.asyncio
-async def test_integration_analysis_cycle(config):
-    """Test d'intégration du cycle d'analyse complet"""
-    with patch("agent.Elasticsearch") as mock_es_class, patch(
-        "agent.config.load_incluster_config"
-    ), patch("agent.config.load_kube_config"), patch(
-        "agent.client.CoreV1Api"
-    ):  # Mock K8s sans variable car pas utilisé
+class TestSREAgentStore:
+    @pytest.mark.asyncio
+    async def test_store_writes_to_elasticsearch(self, agent, sample_timestamp):
+        data = CollectedData(
+            node_metrics=[
+                NodeMetrics(
+                    node_name="node-1",
+                    cpu_usage_percent=45.0,
+                    memory_usage_percent=60.0,
+                    disk_usage_percent=30.0,
+                    network_rx_bytes=0,
+                    network_tx_bytes=0,
+                    conditions={},
+                    timestamp=sample_timestamp,
+                )
+            ],
+            pod_metrics=[],
+            events=[],
+            resource_states=[],
+            collection_timestamp=sample_timestamp,
+        )
+        agent._storage.store_bulk = AsyncMock(return_value=1)
 
-        # Configuration des mocks
-        mock_es_instance = mock_es_class.return_value
-        mock_es_instance.ping.return_value = True
-        mock_es_instance.search.return_value = {
-            "aggregations": {"pods": {"buckets": []}},
-            "hits": {"hits": []},
-        }
-
-        agent = SREAgent(config)
-        await agent.initialize()
-
-        # Simuler un cycle d'analyse
-        with patch.object(
-            agent, "collect_metrics"
-        ) as mock_collect_metrics, patch.object(
-            agent, "collect_logs"
-        ) as mock_collect_logs:
-
-            mock_collect_metrics.return_value = []
-            mock_collect_logs.return_value = []
-
-            # Ne doit pas lever d'exception
-            await agent.run_analysis_cycle()
+        await agent.store(data)
+        agent._storage.store_bulk.assert_called()
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])
+class TestSREAgentCycle:
+    @pytest.mark.asyncio
+    async def test_run_cycle(self, agent, sample_timestamp):
+        agent.collect = AsyncMock(
+            return_value=CollectedData(
+                node_metrics=[],
+                pod_metrics=[],
+                events=[],
+                resource_states=[],
+                collection_timestamp=sample_timestamp,
+            )
+        )
+        agent.store = AsyncMock()
+
+        await agent.run_cycle()
+        agent.collect.assert_awaited_once()
+        agent.store.assert_awaited_once()
