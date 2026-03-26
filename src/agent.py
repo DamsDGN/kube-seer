@@ -1,14 +1,17 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 import structlog
 
+from src.analyzer.events import EventAnalyzer
+from src.analyzer.logs import LogAnalyzer
+from src.analyzer.metrics import MetricsAnalyzer
 from src.collector.k8s_api import KubernetesApiCollector
 from src.collector.metrics_server import MetricsServerCollector
 from src.collector.prometheus import PrometheusCollector
 from src.config import Config
-from src.models import CollectedData, StoredRecord
+from src.models import AnalysisResult, Anomaly, CollectedData, StoredRecord
 from src.storage.elasticsearch import ElasticsearchStorage
 
 logger = structlog.get_logger()
@@ -29,6 +32,10 @@ class SREAgent:
             KubernetesApiCollector(config) if config.collectors_k8s_api_enabled else None
         )
         self._storage = ElasticsearchStorage(config)
+        self._metrics_analyzer = MetricsAnalyzer(config)
+        self._event_analyzer = EventAnalyzer(config)
+        self._log_analyzer = LogAnalyzer(config, self._storage)
+        self._last_analysis: Optional[AnalysisResult] = None
 
     async def initialize(self) -> None:
         logger.info("agent.initializing")
@@ -133,10 +140,77 @@ class SREAgent:
             stored = await self._storage.store_bulk(metrics_index, records)
             logger.info("agent.stored", count=stored)
 
+    async def analyze(self, data: CollectedData) -> AnalysisResult:
+        anomalies: List[Anomaly] = []
+        try:
+            metrics_anomalies = await self._metrics_analyzer.analyze(
+                node_metrics=data.node_metrics,
+                pod_metrics=data.pod_metrics,
+            )
+            anomalies.extend(metrics_anomalies)
+        except Exception as e:
+            logger.error("agent.metrics_analysis_error", error=str(e))
+
+        try:
+            event_anomalies = await self._event_analyzer.analyze(
+                events=data.events,
+            )
+            anomalies.extend(event_anomalies)
+        except Exception as e:
+            logger.error("agent.event_analysis_error", error=str(e))
+
+        try:
+            log_anomalies = await self._log_analyzer.analyze()
+            anomalies.extend(log_anomalies)
+        except Exception as e:
+            logger.error("agent.log_analysis_error", error=str(e))
+
+        result = AnalysisResult(
+            anomalies=anomalies,
+            analysis_timestamp=data.collection_timestamp,
+            metrics_analyzed=len(data.node_metrics) + len(data.pod_metrics),
+            logs_analyzed=0,
+            events_analyzed=len(data.events),
+        )
+        self._last_analysis = result
+        logger.info("agent.analyzed", anomaly_count=len(anomalies))
+        return result
+
+    async def store_anomalies(self, result: AnalysisResult) -> None:
+        if not result.anomalies:
+            return
+        index = self._config.elasticsearch_indices_anomalies
+        records = [
+            StoredRecord(
+                record_type="anomaly",
+                data=a.model_dump(),
+                timestamp=a.timestamp,
+            )
+            for a in result.anomalies
+        ]
+        stored = await self._storage.store_bulk(index, records)
+        logger.info("agent.anomalies_stored", count=stored)
+
+    async def update_models(self, data: CollectedData) -> None:
+        try:
+            await self._metrics_analyzer.update_model(
+                node_metrics=data.node_metrics,
+                pod_metrics=data.pod_metrics,
+            )
+        except Exception as e:
+            logger.error("agent.model_update_error", error=str(e))
+        try:
+            await self._log_analyzer.update_model()
+        except Exception as e:
+            logger.error("agent.log_model_update_error", error=str(e))
+
     async def run_cycle(self) -> None:
         logger.info("agent.cycle_start")
         data = await self.collect()
         await self.store(data)
+        result = await self.analyze(data)
+        await self.store_anomalies(result)
+        await self.update_models(data)
         logger.info("agent.cycle_end")
 
     async def start(self) -> None:
