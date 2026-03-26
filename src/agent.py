@@ -12,6 +12,7 @@ from src.collector.metrics_server import MetricsServerCollector
 from src.collector.prometheus import PrometheusCollector
 from src.config import Config
 from src.models import AnalysisResult, Anomaly, CollectedData, StoredRecord
+from src.alerter.service import AlerterService
 from src.storage.elasticsearch import ElasticsearchStorage
 
 logger = structlog.get_logger()
@@ -23,19 +24,26 @@ class SREAgent:
         self._running = False
 
         self._prometheus: Optional[PrometheusCollector] = (
-            PrometheusCollector(config) if config.collectors_prometheus_enabled else None
+            PrometheusCollector(config)
+            if config.collectors_prometheus_enabled
+            else None
         )
         self._metrics_server: Optional[MetricsServerCollector] = (
-            MetricsServerCollector(config) if config.collectors_metrics_server_enabled else None
+            MetricsServerCollector(config)
+            if config.collectors_metrics_server_enabled
+            else None
         )
         self._k8s_api: Optional[KubernetesApiCollector] = (
-            KubernetesApiCollector(config) if config.collectors_k8s_api_enabled else None
+            KubernetesApiCollector(config)
+            if config.collectors_k8s_api_enabled
+            else None
         )
         self._storage = ElasticsearchStorage(config)
         self._metrics_analyzer = MetricsAnalyzer(config)
         self._event_analyzer = EventAnalyzer(config)
         self._log_analyzer = LogAnalyzer(config, self._storage)
         self._last_analysis: Optional[AnalysisResult] = None
+        self._alerter = AlerterService(config)
 
     async def initialize(self) -> None:
         logger.info("agent.initializing")
@@ -46,6 +54,7 @@ class SREAgent:
             await self._metrics_server.connect()
         if self._k8s_api:
             await self._k8s_api.connect()
+        await self._alerter.connect()
         logger.info("agent.initialized")
 
     async def collect(self) -> CollectedData:
@@ -210,6 +219,7 @@ class SREAgent:
         await self.store(data)
         result = await self.analyze(data)
         await self.store_anomalies(result)
+        await self._alerter.send_alerts(result)
         await self.update_models(data)
         logger.info("agent.cycle_end")
 
@@ -233,4 +243,5 @@ class SREAgent:
             await self._metrics_server.close()
         if self._k8s_api:
             await self._k8s_api.close()
+        await self._alerter.close()
         logger.info("agent.stopped")

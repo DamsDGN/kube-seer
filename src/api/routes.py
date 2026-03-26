@@ -104,4 +104,16 @@ def create_app(config: Config, agent) -> FastAPI:
             }
         return {"status": "completed", "anomalies_found": 0}
 
+    @app.get("/alerts/stats")
+    async def alert_stats():
+        if hasattr(agent, "_alerter") and agent._alerter:
+            return agent._alerter.get_stats()
+        return {
+            "total_sent": 0,
+            "alertmanager_sent": 0,
+            "webhook_sent": 0,
+            "deduped": 0,
+            "skipped_info": 0,
+        }
+
     return app

@@ -32,9 +32,7 @@ class TestPrometheusCollectorHealthy:
     @pytest.mark.asyncio
     async def test_is_healthy_true(self, collector):
         collector._client = AsyncMock()
-        collector._client.get = AsyncMock(
-            return_value=MagicMock(status_code=200)
-        )
+        collector._client.get = AsyncMock(return_value=MagicMock(status_code=200))
         assert await collector.is_healthy() is True
 
     @pytest.mark.asyncio

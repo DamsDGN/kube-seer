@@ -90,8 +90,18 @@ class TestElasticsearchQuery:
             return_value={
                 "hits": {
                     "hits": [
-                        {"_source": {"record_type": "node_metrics", "data": {"cpu": 45}}},
-                        {"_source": {"record_type": "node_metrics", "data": {"cpu": 60}}},
+                        {
+                            "_source": {
+                                "record_type": "node_metrics",
+                                "data": {"cpu": 45},
+                            }
+                        },
+                        {
+                            "_source": {
+                                "record_type": "node_metrics",
+                                "data": {"cpu": 60},
+                            }
+                        },
                     ]
                 }
             }

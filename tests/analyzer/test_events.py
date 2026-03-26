@@ -96,17 +96,19 @@ class TestEventAnalyzerFrequency:
     async def test_detects_event_burst(self, analyzer, sample_timestamp):
         events = []
         for i in range(20):
-            events.append(KubernetesEvent(
-                event_type="Warning",
-                reason="BackOff",
-                message=f"Back-off restarting failed container {i}",
-                involved_object_kind="Pod",
-                involved_object_name="worker-fail",
-                involved_object_namespace="default",
-                count=1,
-                first_timestamp=sample_timestamp,
-                last_timestamp=sample_timestamp,
-            ))
+            events.append(
+                KubernetesEvent(
+                    event_type="Warning",
+                    reason="BackOff",
+                    message=f"Back-off restarting failed container {i}",
+                    involved_object_kind="Pod",
+                    involved_object_name="worker-fail",
+                    involved_object_namespace="default",
+                    count=1,
+                    first_timestamp=sample_timestamp,
+                    last_timestamp=sample_timestamp,
+                )
+            )
         anomalies = await analyzer.analyze(events=events)
         burst_anomalies = [a for a in anomalies if "burst" in a.description.lower()]
         assert len(burst_anomalies) >= 1

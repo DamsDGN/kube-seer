@@ -45,7 +45,9 @@ class TestConfigValidation:
 
     def test_analysis_interval_minimum(self):
         with pytest.raises(ValueError):
-            Config(elasticsearch_url="http://localhost:9200", agent_analysis_interval=30)
+            Config(
+                elasticsearch_url="http://localhost:9200", agent_analysis_interval=30
+            )
 
     def test_anomaly_threshold_range(self):
         with pytest.raises(ValueError):

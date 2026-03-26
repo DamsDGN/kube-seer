@@ -86,9 +86,7 @@ class ElasticsearchStorage(BaseStorage):
         if not self._client:
             return []
         try:
-            result = await self._client.search(
-                index=index, query=query_body, size=size
-            )
+            result = await self._client.search(index=index, query=query_body, size=size)
             return [hit["_source"] for hit in result["hits"]["hits"]]
         except Exception as e:
             logger.error("elasticsearch_storage.query_error", index=index, error=str(e))

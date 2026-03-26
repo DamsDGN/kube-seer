@@ -102,9 +102,7 @@ class MetricsServerCollector(MetricsCollector):
             )
         return nodes
 
-    async def collect_pod_metrics(
-        self, namespace: str = ""
-    ) -> List[PodMetrics]:
+    async def collect_pod_metrics(self, namespace: str = "") -> List[PodMetrics]:
         if not self._api:
             return []
         try:
@@ -132,7 +130,9 @@ class MetricsServerCollector(MetricsCollector):
         for item in result.get("items", []):
             containers = item.get("containers", [])
             total_cpu = sum(_parse_cpu(c["usage"].get("cpu", "0")) for c in containers)
-            total_mem = sum(_parse_memory(c["usage"].get("memory", "0")) for c in containers)
+            total_mem = sum(
+                _parse_memory(c["usage"].get("memory", "0")) for c in containers
+            )
             pods.append(
                 PodMetrics(
                     pod_name=item["metadata"]["name"],
