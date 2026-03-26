@@ -22,7 +22,6 @@ NODE_NETWORK_TX_QUERY = "rate(node_network_transmit_bytes_total[5m])"
 POD_CPU_QUERY = "sum by (pod, namespace, node) (rate(container_cpu_usage_seconds_total[5m])) * 1000"
 POD_MEMORY_QUERY = "sum by (pod, namespace, node) (container_memory_working_set_bytes)"
 POD_RESTART_QUERY = "sum by (pod, namespace) (kube_pod_container_status_restarts_total)"
-POD_STATUS_QUERY = "kube_pod_status_phase"
 
 
 class PrometheusCollector(MetricsCollector):
@@ -78,9 +77,15 @@ class PrometheusCollector(MetricsCollector):
         rx_results = await self._query(NODE_NETWORK_RX_QUERY)
         tx_results = await self._query(NODE_NETWORK_TX_QUERY)
 
+        def _strip_port(instance: str) -> str:
+            # Strip port from instance label (e.g. "192.168.1.5:9100" -> "192.168.1.5").
+            # NOTE: This still won't match K8s node names (e.g. "node-1") from metrics-server.
+            # Full dedup would require resolving node IPs to K8s node names.
+            return instance.rsplit(":", 1)[0] if ":" in instance else instance
+
         def _by_instance(results: List[Dict]) -> Dict[str, float]:
             return {
-                r["metric"].get("instance", ""): float(r["value"][1])
+                _strip_port(r["metric"].get("instance", "")): float(r["value"][1])
                 for r in results
                 if r.get("value")
             }

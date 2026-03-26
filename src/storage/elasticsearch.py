@@ -49,7 +49,6 @@ class ElasticsearchStorage(BaseStorage):
         if not self._client:
             return
         doc = record.model_dump()
-        doc["data"] = record.data
         try:
             await self._client.index(index=index, document=doc)
         except Exception as e:

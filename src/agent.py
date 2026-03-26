@@ -63,9 +63,9 @@ class SREAgent:
                 for n in ms_nodes:
                     if n.node_name not in existing_node_names:
                         node_metrics.append(n)
-                existing_pod_names = {p.pod_name for p in pod_metrics}
+                existing_pods = {(p.namespace, p.pod_name) for p in pod_metrics}
                 for p in ms_pods:
-                    if p.pod_name not in existing_pod_names:
+                    if (p.namespace, p.pod_name) not in existing_pods:
                         pod_metrics.append(p)
             except Exception as e:
                 logger.error("agent.metrics_server_error", error=str(e))

@@ -1,3 +1,4 @@
+import asyncio
 import structlog
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -58,8 +59,11 @@ class MetricsServerCollector(MetricsCollector):
         if not self._api:
             return False
         try:
-            self._api.list_cluster_custom_object(
-                group="metrics.k8s.io", version="v1beta1", plural="nodes"
+            await asyncio.to_thread(
+                self._api.list_cluster_custom_object,
+                group="metrics.k8s.io",
+                version="v1beta1",
+                plural="nodes",
             )
             return True
         except Exception:
@@ -69,8 +73,11 @@ class MetricsServerCollector(MetricsCollector):
         if not self._api:
             return []
         try:
-            result = self._api.list_cluster_custom_object(
-                group="metrics.k8s.io", version="v1beta1", plural="nodes"
+            result = await asyncio.to_thread(
+                self._api.list_cluster_custom_object,
+                group="metrics.k8s.io",
+                version="v1beta1",
+                plural="nodes",
             )
         except Exception as e:
             logger.error("metrics_server_collector.node_error", error=str(e))
@@ -79,14 +86,13 @@ class MetricsServerCollector(MetricsCollector):
         now = datetime.now(timezone.utc)
         nodes = []
         for item in result.get("items", []):
-            usage = item.get("usage", {})
-            cpu_millicores = _parse_cpu(usage.get("cpu", "0"))
-            memory_bytes = _parse_memory(usage.get("memory", "0"))
             nodes.append(
                 NodeMetrics(
                     node_name=item["metadata"]["name"],
-                    cpu_usage_percent=cpu_millicores / 10.0,
-                    memory_usage_percent=memory_bytes / (1024**3) * 100,
+                    # metrics-server provides raw usage only, not percentages.
+                    # Percentage calculation requires node capacity (available from Prometheus).
+                    cpu_usage_percent=0.0,
+                    memory_usage_percent=0.0,
                     disk_usage_percent=0.0,
                     network_rx_bytes=0,
                     network_tx_bytes=0,
@@ -103,15 +109,19 @@ class MetricsServerCollector(MetricsCollector):
             return []
         try:
             if namespace:
-                result = self._api.list_namespaced_custom_object(
+                result = await asyncio.to_thread(
+                    self._api.list_namespaced_custom_object,
                     group="metrics.k8s.io",
                     version="v1beta1",
                     namespace=namespace,
                     plural="pods",
                 )
             else:
-                result = self._api.list_cluster_custom_object(
-                    group="metrics.k8s.io", version="v1beta1", plural="pods"
+                result = await asyncio.to_thread(
+                    self._api.list_cluster_custom_object,
+                    group="metrics.k8s.io",
+                    version="v1beta1",
+                    plural="pods",
                 )
         except Exception as e:
             logger.error("metrics_server_collector.pod_error", error=str(e))
