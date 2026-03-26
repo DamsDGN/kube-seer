@@ -67,4 +67,41 @@ def create_app(config: Config, agent) -> FastAPI:
         config_dict = config.model_dump()
         return {k: v for k, v in config_dict.items() if k not in SECRETS_FIELDS}
 
+    @app.get("/anomalies")
+    async def get_anomalies(
+        severity: str = "",
+        namespace: str = "",
+        limit: int = 100,
+    ):
+        query_parts: list = [{"match": {"record_type": "anomaly"}}]
+        if severity:
+            severity_map = {"info": 0, "warning": 1, "critical": 2}
+            sev_val = severity_map.get(severity.lower())
+            if sev_val is not None:
+                query_parts.append({"match": {"data.severity": sev_val}})
+        if namespace:
+            query_parts.append({"match": {"data.namespace": namespace}})
+
+        query_body = {"bool": {"must": query_parts}}
+        results = await agent._storage.query(
+            index=config.elasticsearch_indices_anomalies,
+            query_body=query_body,
+            size=limit,
+        )
+        return {"anomalies": results, "count": len(results)}
+
+    @app.post("/analyze")
+    async def trigger_analysis():
+        await agent.run_cycle()
+        result = agent._last_analysis
+        if result:
+            return {
+                "status": "completed",
+                "anomalies_found": len(result.anomalies),
+                "metrics_analyzed": result.metrics_analyzed,
+                "events_analyzed": result.events_analyzed,
+                "timestamp": result.analysis_timestamp.isoformat(),
+            }
+        return {"status": "completed", "anomalies_found": 0}
+
     return app

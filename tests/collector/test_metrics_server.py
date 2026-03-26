@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 
 from src.collector.metrics_server import MetricsServerCollector
 from src.config import Config

@@ -72,3 +72,24 @@ class StoredRecord(BaseModel):
     data: Dict[str, Any]
     timestamp: datetime
     cluster_name: str = ""
+
+
+class Anomaly(BaseModel):
+    anomaly_id: str
+    source: str
+    severity: Severity
+    resource_type: str
+    resource_name: str
+    namespace: str = ""
+    description: str
+    score: float
+    details: Dict[str, Any] = {}
+    timestamp: datetime
+
+
+class AnalysisResult(BaseModel):
+    anomalies: List[Anomaly]
+    analysis_timestamp: datetime
+    metrics_analyzed: int = 0
+    logs_analyzed: int = 0
+    events_analyzed: int = 0

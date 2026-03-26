@@ -1,11 +1,12 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 from httpx import AsyncClient, ASGITransport
 
 from src.api.routes import create_app
 from src.config import Config
+from src.models import AnalysisResult
 
 
 @pytest.fixture
@@ -87,3 +88,66 @@ class TestConfigEndpoint:
         assert "elasticsearch_password" not in data
         assert "intelligence_api_key" not in data
         assert "elasticsearch_url" in data
+
+
+class TestAnomaliesEndpoint:
+    @pytest.mark.asyncio
+    async def test_anomalies_empty(self, client, mock_agent):
+        mock_agent._storage.query = AsyncMock(return_value=[])
+        resp = await client.get("/anomalies")
+        assert resp.status_code == 200
+        assert resp.json()["anomalies"] == []
+
+    @pytest.mark.asyncio
+    async def test_anomalies_with_results(self, client, mock_agent):
+        mock_agent._storage.query = AsyncMock(return_value=[
+            {
+                "record_type": "anomaly",
+                "data": {
+                    "anomaly_id": "a-001",
+                    "source": "metrics",
+                    "severity": 1,
+                    "resource_type": "node",
+                    "resource_name": "node-1",
+                    "namespace": "",
+                    "description": "CPU high",
+                    "score": 0.85,
+                    "details": {},
+                    "timestamp": "2026-01-15T10:30:00Z",
+                },
+                "timestamp": "2026-01-15T10:30:00Z",
+                "cluster_name": "",
+            }
+        ])
+        resp = await client.get("/anomalies")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["anomalies"]) == 1
+        assert data["anomalies"][0]["data"]["anomaly_id"] == "a-001"
+
+    @pytest.mark.asyncio
+    async def test_anomalies_filter_severity(self, client, mock_agent):
+        mock_agent._storage.query = AsyncMock(return_value=[])
+        resp = await client.get("/anomalies?severity=critical")
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_anomalies_filter_namespace(self, client, mock_agent):
+        mock_agent._storage.query = AsyncMock(return_value=[])
+        resp = await client.get("/anomalies?namespace=production")
+        assert resp.status_code == 200
+
+
+class TestAnalyzeEndpoint:
+    @pytest.mark.asyncio
+    async def test_trigger_manual_analysis(self, client, mock_agent):
+        mock_agent.run_cycle = AsyncMock()
+        mock_agent._last_analysis = AnalysisResult(
+            anomalies=[],
+            analysis_timestamp=datetime(2026, 1, 15, 10, 30, tzinfo=timezone.utc),
+            metrics_analyzed=5,
+            events_analyzed=3,
+        )
+        resp = await client.post("/analyze")
+        assert resp.status_code == 200
+        mock_agent.run_cycle.assert_awaited_once()

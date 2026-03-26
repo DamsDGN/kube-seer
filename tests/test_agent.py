@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 
 from src.agent import SREAgent
 from src.config import Config
@@ -10,8 +9,8 @@ from src.models import (
     PodMetrics,
     KubernetesEvent,
     ResourceState,
-    StoredRecord,
 )
+from src.models import Anomaly, AnalysisResult, Severity
 
 
 @pytest.fixture
@@ -157,4 +156,86 @@ class TestSREAgentCycle:
 
         await agent.run_cycle()
         agent.collect.assert_awaited_once()
+        agent.store.assert_awaited_once()
+
+
+class TestSREAgentAnalyze:
+    @pytest.mark.asyncio
+    async def test_analyze_returns_result(self, agent, sample_timestamp):
+        agent._metrics_analyzer = AsyncMock()
+        agent._metrics_analyzer.analyze = AsyncMock(return_value=[])
+        agent._event_analyzer = AsyncMock()
+        agent._event_analyzer.analyze = AsyncMock(return_value=[])
+        agent._log_analyzer = AsyncMock()
+        agent._log_analyzer.analyze = AsyncMock(return_value=[])
+
+        data = CollectedData(
+            node_metrics=[],
+            pod_metrics=[],
+            events=[],
+            resource_states=[],
+            collection_timestamp=sample_timestamp,
+        )
+        result = await agent.analyze(data)
+        assert isinstance(result, AnalysisResult)
+        assert result.anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_analyze_aggregates_anomalies(self, agent, sample_timestamp):
+        anomaly = Anomaly(
+            anomaly_id="a-001",
+            source="metrics",
+            severity=Severity.WARNING,
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            description="test",
+            score=0.5,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        agent._metrics_analyzer = AsyncMock()
+        agent._metrics_analyzer.analyze = AsyncMock(return_value=[anomaly])
+        agent._event_analyzer = AsyncMock()
+        agent._event_analyzer.analyze = AsyncMock(return_value=[])
+        agent._log_analyzer = AsyncMock()
+        agent._log_analyzer.analyze = AsyncMock(return_value=[])
+
+        data = CollectedData(
+            node_metrics=[],
+            pod_metrics=[],
+            events=[],
+            resource_states=[],
+            collection_timestamp=sample_timestamp,
+        )
+        result = await agent.analyze(data)
+        assert len(result.anomalies) == 1
+        assert result.anomalies[0].anomaly_id == "a-001"
+
+
+class TestSREAgentCycleWithAnalysis:
+    @pytest.mark.asyncio
+    async def test_run_cycle_includes_analyze(self, agent, sample_timestamp):
+        agent.collect = AsyncMock(
+            return_value=CollectedData(
+                node_metrics=[],
+                pod_metrics=[],
+                events=[],
+                resource_states=[],
+                collection_timestamp=sample_timestamp,
+            )
+        )
+        agent.analyze = AsyncMock(
+            return_value=AnalysisResult(
+                anomalies=[],
+                analysis_timestamp=sample_timestamp,
+            )
+        )
+        agent.store = AsyncMock()
+        agent.store_anomalies = AsyncMock()
+        agent.update_models = AsyncMock()
+
+        await agent.run_cycle()
+        agent.collect.assert_awaited_once()
+        agent.analyze.assert_awaited_once()
         agent.store.assert_awaited_once()
