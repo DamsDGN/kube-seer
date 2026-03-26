@@ -24,7 +24,9 @@ class Correlator:
         groups = self._group_anomalies(anomalies, pod_to_node)
         incidents = self._build_incidents(groups)
         logger.info(
-            "correlator.done", anomalies=len(anomalies), incidents=len(incidents),
+            "correlator.done",
+            anomalies=len(anomalies),
+            incidents=len(incidents),
         )
         return incidents
 
@@ -38,7 +40,9 @@ class Correlator:
 
     def _resource_key(self, anomaly: Anomaly) -> str:
         if anomaly.namespace:
-            return f"{anomaly.namespace}/{anomaly.resource_type}/{anomaly.resource_name}"
+            return (
+                f"{anomaly.namespace}/{anomaly.resource_type}/{anomaly.resource_name}"
+            )
         return f"{anomaly.resource_type}/{anomaly.resource_name}"
 
     def _get_node_for_anomaly(
@@ -52,7 +56,9 @@ class Correlator:
         return ""
 
     def _group_anomalies(
-        self, anomalies: List[Anomaly], pod_to_node: Dict[str, str],
+        self,
+        anomalies: List[Anomaly],
+        pod_to_node: Dict[str, str],
     ) -> List[List[Anomaly]]:
         n = len(anomalies)
         related: Dict[int, Set[int]] = {i: set() for i in range(n)}
@@ -79,7 +85,10 @@ class Correlator:
         return groups
 
     def _are_related(
-        self, a: Anomaly, b: Anomaly, pod_to_node: Dict[str, str],
+        self,
+        a: Anomaly,
+        b: Anomaly,
+        pod_to_node: Dict[str, str],
     ) -> bool:
         time_diff = abs((a.timestamp - b.timestamp).total_seconds())
         if time_diff > TEMPORAL_WINDOW_SECONDS:

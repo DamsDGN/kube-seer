@@ -10,7 +10,7 @@ from src.models import (
     KubernetesEvent,
     ResourceState,
 )
-from src.models import Anomaly, AnalysisResult, Incident, Severity
+from src.models import Anomaly, AnalysisResult, Severity
 
 
 @pytest.fixture
@@ -245,9 +245,16 @@ class TestSREAgentCorrelation:
     @pytest.mark.asyncio
     async def test_analyze_includes_correlation(self, agent, sample_timestamp):
         anomaly = Anomaly(
-            anomaly_id="a-001", source="metrics", severity=Severity.WARNING,
-            resource_type="node", resource_name="node-1", namespace="",
-            description="CPU warning", score=0.7, details={}, timestamp=sample_timestamp,
+            anomaly_id="a-001",
+            source="metrics",
+            severity=Severity.WARNING,
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            description="CPU warning",
+            score=0.7,
+            details={},
+            timestamp=sample_timestamp,
         )
         agent._metrics_analyzer = AsyncMock()
         agent._metrics_analyzer.analyze = AsyncMock(return_value=[anomaly])
@@ -257,7 +264,10 @@ class TestSREAgentCorrelation:
         agent._log_analyzer.analyze = AsyncMock(return_value=[])
 
         data = CollectedData(
-            node_metrics=[], pod_metrics=[], events=[], resource_states=[],
+            node_metrics=[],
+            pod_metrics=[],
+            events=[],
+            resource_states=[],
             collection_timestamp=sample_timestamp,
         )
         result = await agent.analyze(data)
