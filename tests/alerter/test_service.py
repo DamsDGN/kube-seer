@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 
 from src.alerter.service import AlerterService
@@ -17,12 +17,14 @@ def config():
         alerter_fallback_webhook_url="http://hooks.example.com/alert",
     )
 
+
 @pytest.fixture
 def service(config):
     svc = AlerterService(config)
     svc._alertmanager = AsyncMock()
     svc._webhook = AsyncMock()
     return svc
+
 
 @pytest.fixture
 def anomaly(sample_timestamp):
@@ -33,6 +35,7 @@ def anomaly(sample_timestamp):
         timestamp=sample_timestamp,
     )
 
+
 @pytest.fixture
 def info_anomaly(sample_timestamp):
     return Anomaly(
@@ -41,6 +44,7 @@ def info_anomaly(sample_timestamp):
         description="Low usage", score=0.1, details={},
         timestamp=sample_timestamp,
     )
+
 
 class TestAlerterServiceRouting:
     @pytest.mark.asyncio
@@ -61,7 +65,8 @@ class TestAlerterServiceRouting:
 
     @pytest.mark.asyncio
     async def test_no_alerts_on_empty_anomalies(self, service):
-        result = AnalysisResult(anomalies=[], analysis_timestamp=datetime(2026, 1, 15, tzinfo=timezone.utc))
+        ts = datetime(2026, 1, 15, tzinfo=timezone.utc)
+        result = AnalysisResult(anomalies=[], analysis_timestamp=ts)
         await service.send_alerts(result)
         service._alertmanager.send.assert_not_awaited()
 
@@ -72,6 +77,7 @@ class TestAlerterServiceRouting:
         result = AnalysisResult(anomalies=[info_anomaly], analysis_timestamp=info_anomaly.timestamp)
         await service.send_alerts(result)
         service._alertmanager.send.assert_not_awaited()
+
 
 class TestAlerterServiceDedup:
     @pytest.mark.asyncio
@@ -102,6 +108,7 @@ class TestAlerterServiceDedup:
         await service.send_alerts(r1)
         await service.send_alerts(r2)
         assert service._alertmanager.send.await_count == 2
+
 
 class TestAlerterServiceStats:
     @pytest.mark.asyncio

@@ -12,9 +12,11 @@ def config():
         alerter_fallback_webhook_url="http://hooks.example.com/alert",
     )
 
+
 @pytest.fixture
 def alerter(config):
     return WebhookAlerter(config)
+
 
 @pytest.fixture
 def anomaly(sample_timestamp):
@@ -24,6 +26,7 @@ def anomaly(sample_timestamp):
         description="CPU critical", score=0.92, details={"cpu": 92.0},
         timestamp=sample_timestamp,
     )
+
 
 class TestWebhookSend:
     @pytest.mark.asyncio
@@ -62,6 +65,7 @@ class TestWebhookSend:
         alerter = WebhookAlerter(config)
         count = await alerter.send([MagicMock()])
         assert count == 0
+
 
 class TestWebhookHealth:
     @pytest.mark.asyncio

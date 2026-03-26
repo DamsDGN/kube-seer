@@ -12,9 +12,11 @@ def config():
         alerter_alertmanager_url="http://alertmanager:9093",
     )
 
+
 @pytest.fixture
 def client(config):
     return AlertmanagerClient(config)
+
 
 @pytest.fixture
 def critical_anomaly(sample_timestamp):
@@ -25,6 +27,7 @@ def critical_anomaly(sample_timestamp):
         details={"cpu_usage_percent": 92.0}, timestamp=sample_timestamp,
     )
 
+
 @pytest.fixture
 def warning_anomaly(sample_timestamp):
     return Anomaly(
@@ -33,6 +36,7 @@ def warning_anomaly(sample_timestamp):
         description="FailedScheduling: 0/3 nodes available", score=0.7,
         details={}, timestamp=sample_timestamp,
     )
+
 
 class TestAlertmanagerFormat:
     def test_format_alert_critical(self, client, critical_anomaly):
@@ -54,6 +58,7 @@ class TestAlertmanagerFormat:
         alerts = client._format_alerts([critical_anomaly])
         assert alerts[0]["labels"]["source"] == "metrics"
 
+
 class TestAlertmanagerSend:
     @pytest.mark.asyncio
     async def test_send_success(self, client, critical_anomaly):
@@ -74,6 +79,7 @@ class TestAlertmanagerSend:
         client._http.post = AsyncMock(return_value=MagicMock(status_code=500))
         count = await client.send([critical_anomaly])
         assert count == 0
+
 
 class TestAlertmanagerHealth:
     @pytest.mark.asyncio
