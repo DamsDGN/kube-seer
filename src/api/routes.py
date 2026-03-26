@@ -116,4 +116,15 @@ def create_app(config: Config, agent) -> FastAPI:
             "skipped_info": 0,
         }
 
+    @app.get("/incidents")
+    async def get_incidents():
+        if agent._last_analysis and agent._last_analysis.incidents:
+            return {
+                "incidents": [
+                    inc.model_dump() for inc in agent._last_analysis.incidents
+                ],
+                "count": len(agent._last_analysis.incidents),
+            }
+        return {"incidents": [], "count": 0}
+
     return app
