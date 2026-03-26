@@ -1,6 +1,6 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
 from httpx import AsyncClient, ASGITransport
 
@@ -151,3 +151,21 @@ class TestAnalyzeEndpoint:
         resp = await client.post("/analyze")
         assert resp.status_code == 200
         mock_agent.run_cycle.assert_awaited_once()
+
+
+class TestAlertStatsEndpoint:
+    @pytest.mark.asyncio
+    async def test_alert_stats(self, client, mock_agent):
+        mock_agent._alerter = MagicMock()
+        mock_agent._alerter.get_stats.return_value = {
+            "total_sent": 5,
+            "alertmanager_sent": 3,
+            "webhook_sent": 2,
+            "deduped": 1,
+            "skipped_info": 0,
+        }
+        resp = await client.get("/alerts/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_sent"] == 5
+        assert data["alertmanager_sent"] == 3
