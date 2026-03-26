@@ -1,319 +1,162 @@
-"""
-Agent IA SRE pour l'analyse des métriques et logs d'une stack EFK
-"""
-
 import asyncio
-from datetime import datetime, UTC
-from typing import List, Optional, Dict
+from datetime import datetime, timezone
+from typing import Optional
 
 import structlog
-from elasticsearch import Elasticsearch
-from kubernetes import client, config
 
-from config import Config
-from metrics_analyzer import MetricsAnalyzer
-from log_analyzer import LogAnalyzer
-from alerting import AlertManager
-from models import Alert, Metric, LogEntry
+from src.collector.k8s_api import KubernetesApiCollector
+from src.collector.metrics_server import MetricsServerCollector
+from src.collector.prometheus import PrometheusCollector
+from src.config import Config
+from src.models import CollectedData, StoredRecord
+from src.storage.elasticsearch import ElasticsearchStorage
 
 logger = structlog.get_logger()
 
 
 class SREAgent:
-    """
-    Agent IA principal pour l'analyse automatisée des métriques et logs EFK
-    """
-
     def __init__(self, config: Config):
-        self.config = config
-        self.es_client: Optional[Elasticsearch] = None
-        self.k8s_client = None
-        self.metrics_analyzer = MetricsAnalyzer(config)
-        self.log_analyzer = LogAnalyzer(config)
-        self.alert_manager = AlertManager(config)
-        self.running = False
+        self._config = config
+        self._running = False
 
-    async def initialize(self):
-        """Initialise les connexions aux services"""
-        try:
-            # Connexion Elasticsearch
-            self.es_client = Elasticsearch(
-                [self.config.elasticsearch_url],
-                basic_auth=(
-                    self.config.elasticsearch_user,
-                    self.config.elasticsearch_password,
-                ),
-                verify_certs=False,
-            )
+        self._prometheus: Optional[PrometheusCollector] = (
+            PrometheusCollector(config) if config.collectors_prometheus_enabled else None
+        )
+        self._metrics_server: Optional[MetricsServerCollector] = (
+            MetricsServerCollector(config) if config.collectors_metrics_server_enabled else None
+        )
+        self._k8s_api: Optional[KubernetesApiCollector] = (
+            KubernetesApiCollector(config) if config.collectors_k8s_api_enabled else None
+        )
+        self._storage = ElasticsearchStorage(config)
 
-            # Test de connexion ES
-            if not self.es_client.ping():
-                raise ConnectionError("Impossible de se connecter à Elasticsearch")
+    async def initialize(self) -> None:
+        logger.info("agent.initializing")
+        await self._storage.connect()
+        if self._prometheus:
+            await self._prometheus.connect()
+        if self._metrics_server:
+            await self._metrics_server.connect()
+        if self._k8s_api:
+            await self._k8s_api.connect()
+        logger.info("agent.initialized")
 
-            # Connexion Kubernetes
-            if self.config.k8s_in_cluster:
-                config.load_incluster_config()
-            else:
-                config.load_kube_config()
+    async def collect(self) -> CollectedData:
+        now = datetime.now(timezone.utc)
+        node_metrics = []
+        pod_metrics = []
+        events = []
+        resource_states = []
 
-            self.k8s_client = client.CoreV1Api()
-
-            logger.info("Agent SRE initialisé avec succès")
-
-        except Exception as e:
-            logger.error(f"Erreur lors de l'initialisation: {e}")
-            raise
-
-    async def run_analysis_cycle(self):
-        """Execute un cycle complet d'analyse"""
-        try:
-            logger.info("Début du cycle d'analyse")
-
-            # 1. Collecter les métriques
-            metrics = await self.collect_metrics()
-
-            # 2. Analyser les métriques pour détecter les anomalies
-            metric_anomalies = await self.metrics_analyzer.analyze(metrics)
-
-            # 3. Collecter et analyser les logs
-            logs = await self.collect_logs()
-            log_anomalies = await self.log_analyzer.analyze(logs)
-
-            # 4. Corréler les anomalies
-            correlated_alerts = await self.correlate_anomalies(
-                metric_anomalies, log_anomalies
-            )
-
-            # 5. Générer et envoyer les alertes
-            for alert in correlated_alerts:
-                await self.alert_manager.send_alert(alert)
-
-            # 6. Mettre à jour les modèles ML
-            await self.update_models(metrics, logs)
-
-            logger.info(
-                f"Cycle d'analyse terminé - {len(correlated_alerts)} alertes générées"
-            )
-
-        except Exception as e:
-            logger.error(f"Erreur durant le cycle d'analyse: {e}")
-            await self.alert_manager.send_alert(
-                Alert(
-                    type="system_error",
-                    severity="critical",
-                    message=f"Erreur de l'agent SRE: {e}",
-                    timestamp=datetime.now(UTC),
-                )
-            )
-
-    async def collect_metrics(self) -> List[Metric]:
-        """Collecte les métriques depuis Elasticsearch"""
-        try:
-            query = {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {"range": {"@timestamp": {"gte": "now-5m"}}},
-                            {"exists": {"field": "kubernetes.pod_name"}},
-                        ]
-                    }
-                },
-                "aggs": {
-                    "pods": {
-                        "terms": {"field": "kubernetes.pod_name.keyword"},
-                        "aggs": {
-                            "avg_cpu": {
-                                "avg": {"field": "kubernetes.pod.cpu.usage.nanocores"}
-                            },
-                            "avg_memory": {
-                                "avg": {"field": "kubernetes.pod.memory.usage.bytes"}
-                            },
-                            "max_cpu": {
-                                "max": {"field": "kubernetes.pod.cpu.usage.nanocores"}
-                            },
-                            "max_memory": {
-                                "max": {"field": "kubernetes.pod.memory.usage.bytes"}
-                            },
-                        },
-                    }
-                },
-            }
-
-            if not self.es_client:
-                raise ConnectionError("Elasticsearch client not initialized")
-
-            response = self.es_client.search(
-                index=self.config.metrics_index, body=query, size=0
-            )
-
-            metrics = []
-            for bucket in response["aggregations"]["pods"]["buckets"]:
-                metrics.append(
-                    Metric(
-                        pod_name=bucket["key"],
-                        cpu_usage=bucket["avg_cpu"]["value"],
-                        memory_usage=bucket["avg_memory"]["value"],
-                        cpu_peak=bucket["max_cpu"]["value"],
-                        memory_peak=bucket["max_memory"]["value"],
-                        timestamp=datetime.now(UTC),
-                    )
-                )
-
-            return metrics
-
-        except Exception as e:
-            logger.error(f"Erreur lors de la collecte des métriques: {e}")
-            return []
-
-    async def collect_logs(self) -> List[LogEntry]:
-        """Collecte les logs depuis Elasticsearch"""
-        try:
-            query = {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {"range": {"@timestamp": {"gte": "now-5m"}}},
-                            {"exists": {"field": "kubernetes.pod_name"}},
-                        ],
-                        "should": [
-                            {"match": {"log": "error"}},
-                            {"match": {"log": "exception"}},
-                            {"match": {"log": "warning"}},
-                            {"match": {"log": "critical"}},
-                            {"match": {"log": "fatal"}},
-                        ],
-                        "minimum_should_match": 1,
-                    }
-                },
-                "sort": [{"@timestamp": {"order": "desc"}}],
-            }
-
-            if not self.es_client:
-                raise ConnectionError("Elasticsearch client not initialized")
-
-            response = self.es_client.search(
-                index=self.config.logs_index, body=query, size=1000
-            )
-
-            logs = []
-            for hit in response["hits"]["hits"]:
-                source = hit["_source"]
-                logs.append(
-                    LogEntry(
-                        pod_name=source.get("kubernetes", {}).get("pod_name", ""),
-                        namespace=source.get("kubernetes", {}).get(
-                            "namespace_name", ""
-                        ),
-                        log_level=source.get("level", "INFO"),
-                        message=source.get("log", ""),
-                        timestamp=datetime.fromisoformat(
-                            source.get("@timestamp", "").replace("Z", "+00:00")
-                        ),
-                    )
-                )
-
-            return logs
-
-        except Exception as e:
-            logger.error(f"Erreur lors de la collecte des logs: {e}")
-            return []
-
-    async def correlate_anomalies(
-        self, metric_anomalies: List[Alert], log_anomalies: List[Alert]
-    ) -> List[Alert]:
-        """Corrèle les anomalies métriques et logs"""
-        correlated_alerts = []
-
-        # Grouper par pod/namespace
-        metric_by_pod: Dict[str, List[Alert]] = {}
-        for alert in metric_anomalies:
-            pod = alert.metadata.get("pod_name", "")
-            if pod not in metric_by_pod:
-                metric_by_pod[pod] = []
-            metric_by_pod[pod].append(alert)
-
-        log_by_pod: Dict[str, List[Alert]] = {}
-        for alert in log_anomalies:
-            pod = alert.metadata.get("pod_name", "")
-            if pod not in log_by_pod:
-                log_by_pod[pod] = []
-            log_by_pod[pod].append(alert)
-
-        # Corréler par pod
-        for pod in set(metric_by_pod.keys()) | set(log_by_pod.keys()):
-            pod_metric_alerts = metric_by_pod.get(pod, [])
-            pod_log_alerts = log_by_pod.get(pod, [])
-
-            if pod_metric_alerts and pod_log_alerts:
-                # Corrélation forte - problème critique
-                correlated_alert = Alert(
-                    type="correlated_issue",
-                    severity="critical",
-                    message=f"Problème corrélé détecté sur le pod {pod}: "
-                    f"{len(pod_metric_alerts)} anomalies métriques, "
-                    f"{len(pod_log_alerts)} anomalies logs",
-                    timestamp=datetime.now(UTC),
-                    metadata={
-                        "pod_name": pod,
-                        "metric_alerts": len(pod_metric_alerts),
-                        "log_alerts": len(pod_log_alerts),
-                        "correlation_score": 0.9,
-                    },
-                )
-                correlated_alerts.append(correlated_alert)
-            else:
-                # Ajouter les alertes individuelles
-                correlated_alerts.extend(pod_metric_alerts + pod_log_alerts)
-
-        return correlated_alerts
-
-    async def update_models(self, metrics: List[Metric], logs: List[LogEntry]):
-        """Met à jour les modèles ML avec les nouvelles données"""
-        try:
-            # Mise à jour du modèle de détection d'anomalies métriques
-            await self.metrics_analyzer.update_model(metrics)
-
-            # Mise à jour du modèle d'analyse de logs
-            await self.log_analyzer.update_model(logs)
-
-        except Exception as e:
-            logger.error(f"Erreur lors de la mise à jour des modèles: {e}")
-
-    async def start(self):
-        """Démarre l'agent SRE"""
-        await self.initialize()
-        self.running = True
-
-        logger.info("Agent SRE démarré")
-
-        while self.running:
+        if self._prometheus:
             try:
-                await self.run_analysis_cycle()
-                await asyncio.sleep(self.config.analysis_interval)
-
-            except KeyboardInterrupt:
-                logger.info("Arrêt demandé")
-                break
+                node_metrics.extend(await self._prometheus.collect_node_metrics())
+                pod_metrics.extend(await self._prometheus.collect_pod_metrics())
             except Exception as e:
-                logger.error(f"Erreur dans la boucle principale: {e}")
-                await asyncio.sleep(30)  # Attendre avant de réessayer
+                logger.error("agent.prometheus_error", error=str(e))
 
-    async def stop(self):
-        """Arrête l'agent SRE"""
-        self.running = False
-        logger.info("Agent SRE arrêté")
+        if self._metrics_server:
+            try:
+                ms_nodes = await self._metrics_server.collect_node_metrics()
+                ms_pods = await self._metrics_server.collect_pod_metrics()
+                existing_node_names = {n.node_name for n in node_metrics}
+                for n in ms_nodes:
+                    if n.node_name not in existing_node_names:
+                        node_metrics.append(n)
+                existing_pod_names = {p.pod_name for p in pod_metrics}
+                for p in ms_pods:
+                    if p.pod_name not in existing_pod_names:
+                        pod_metrics.append(p)
+            except Exception as e:
+                logger.error("agent.metrics_server_error", error=str(e))
 
+        if self._k8s_api:
+            try:
+                events = await self._k8s_api.collect_events()
+                resource_states = await self._k8s_api.collect_resource_states()
+            except Exception as e:
+                logger.error("agent.k8s_api_error", error=str(e))
 
-async def main():
-    """Point d'entrée principal"""
-    config = Config()
-    agent = SREAgent(config)
+        logger.info(
+            "agent.collected",
+            nodes=len(node_metrics),
+            pods=len(pod_metrics),
+            events=len(events),
+            resources=len(resource_states),
+        )
+        return CollectedData(
+            node_metrics=node_metrics,
+            pod_metrics=pod_metrics,
+            events=events,
+            resource_states=resource_states,
+            collection_timestamp=now,
+        )
 
-    try:
-        await agent.start()
-    except KeyboardInterrupt:
-        await agent.stop()
+    async def store(self, data: CollectedData) -> None:
+        metrics_index = self._config.elasticsearch_indices_metrics
 
+        records = []
+        for node in data.node_metrics:
+            records.append(
+                StoredRecord(
+                    record_type="node_metrics",
+                    data=node.model_dump(),
+                    timestamp=data.collection_timestamp,
+                )
+            )
+        for pod in data.pod_metrics:
+            records.append(
+                StoredRecord(
+                    record_type="pod_metrics",
+                    data=pod.model_dump(),
+                    timestamp=data.collection_timestamp,
+                )
+            )
+        for event in data.events:
+            records.append(
+                StoredRecord(
+                    record_type="k8s_event",
+                    data=event.model_dump(),
+                    timestamp=data.collection_timestamp,
+                )
+            )
+        for state in data.resource_states:
+            records.append(
+                StoredRecord(
+                    record_type="resource_state",
+                    data=state.model_dump(),
+                    timestamp=data.collection_timestamp,
+                )
+            )
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        if records:
+            stored = await self._storage.store_bulk(metrics_index, records)
+            logger.info("agent.stored", count=stored)
+
+    async def run_cycle(self) -> None:
+        logger.info("agent.cycle_start")
+        data = await self.collect()
+        await self.store(data)
+        logger.info("agent.cycle_end")
+
+    async def start(self) -> None:
+        await self.initialize()
+        self._running = True
+        logger.info("agent.started", interval=self._config.agent_analysis_interval)
+        while self._running:
+            try:
+                await self.run_cycle()
+            except Exception as e:
+                logger.error("agent.cycle_error", error=str(e))
+            await asyncio.sleep(self._config.agent_analysis_interval)
+
+    async def stop(self) -> None:
+        self._running = False
+        await self._storage.close()
+        if self._prometheus:
+            await self._prometheus.close()
+        if self._metrics_server:
+            await self._metrics_server.close()
+        if self._k8s_api:
+            await self._k8s_api.close()
+        logger.info("agent.stopped")
