@@ -1,24 +1,6 @@
 apiVersion: v2
 name: efk-sre-agent
-description: Agent IA SRE pour l'analyse automatisée des métriques et logs EFK
+description: AI-powered SRE agent for Kubernetes cluster monitoring
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
-home: https://github.com/DamsDGN/efk-sre-agent
-sources:
-  - https://github.com/DamsDGN/efk-sre-agent
-maintainers:
-  - name: DamsDGN
-    email: contact@example.com
-keywords:
-  - sre
-  - monitoring
-  - elasticsearch
-  - fluentd
-  - kibana
-  - ml
-  - ai
-  - anomaly-detection
-annotations:
-  category: Monitoring
-  licenses: CC-BY-NC-SA-4.0
+version: 2.0.0
+appVersion: "2.0.0"

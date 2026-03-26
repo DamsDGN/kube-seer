@@ -1,96 +1,97 @@
-"""
-Point d'entrée principal de l'agent SRE
-"""
-
 import asyncio
-import logging
-import sys
 import signal
-from pathlib import Path
+import os
 
 import structlog
+import uvicorn
 
-# Ajouter le répertoire src au path Python
-src_path = Path(__file__).parent.absolute()
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
-from config import Config  # noqa: E402
-from agent import SREAgent  # noqa: E402
+from src.agent import SREAgent
+from src.api.routes import create_app
+from src.config import Config
 
 
-def setup_logging(config: Config):
-    """Configure le logging structuré"""
+def setup_logging(log_level: str) -> None:
     structlog.configure(
         processors=[
-            structlog.stdlib.filter_by_level,
-            structlog.stdlib.add_logger_name,
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,
-            structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer(),
+            structlog.dev.ConsoleRenderer()
+            if os.getenv("LOG_FORMAT") == "console"
+            else structlog.processors.JSONRenderer(),
         ],
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
-
-    # Configuration du niveau de log
-    log_level = getattr(logging, config.log_level.upper(), logging.INFO)
-    logging.basicConfig(
-        format="%(message)s",
-        stream=sys.stdout,
-        level=log_level,
+        wrapper_class=structlog.make_filtering_bound_logger(log_level),
     )
 
 
-async def main():
-    """Point d'entrée principal"""
-    print("🚀 Démarrage de l'agent IA SRE EFK...")
+async def main() -> None:
+    def _bool(key: str, default: str) -> bool:
+        return os.getenv(key, default).lower() == "true"
 
-    try:
-        # Charger la configuration
-        config = Config()
+    config = Config(
+        elasticsearch_url=os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200"),
+        elasticsearch_username=os.getenv("ELASTICSEARCH_USERNAME", ""),
+        elasticsearch_password=os.getenv("ELASTICSEARCH_PASSWORD", ""),
+        elasticsearch_indices_metrics=os.getenv(
+            "ELASTICSEARCH_INDICES_METRICS", "sre-metrics"
+        ),
+        elasticsearch_indices_logs=os.getenv("ELASTICSEARCH_INDICES_LOGS", "sre-logs"),
+        elasticsearch_indices_anomalies=os.getenv(
+            "ELASTICSEARCH_INDICES_ANOMALIES", "sre-anomalies"
+        ),
+        agent_analysis_interval=int(os.getenv("AGENT_ANALYSIS_INTERVAL", "300")),
+        agent_log_level=os.getenv("AGENT_LOG_LEVEL", "INFO"),
+        collectors_prometheus_enabled=_bool("COLLECTORS_PROMETHEUS_ENABLED", "true"),
+        collectors_prometheus_url=os.getenv(
+            "COLLECTORS_PROMETHEUS_URL", "http://prometheus-server:9090"
+        ),
+        collectors_metrics_server_enabled=_bool(
+            "COLLECTORS_METRICS_SERVER_ENABLED", "true"
+        ),
+        collectors_k8s_api_enabled=_bool("COLLECTORS_K8S_API_ENABLED", "true"),
+        collectors_k8s_api_watch_events=_bool("COLLECTORS_K8S_API_WATCH_EVENTS", "true"),
+        thresholds_cpu_warning=float(os.getenv("THRESHOLDS_CPU_WARNING", "70")),
+        thresholds_cpu_critical=float(os.getenv("THRESHOLDS_CPU_CRITICAL", "85")),
+        thresholds_memory_warning=float(os.getenv("THRESHOLDS_MEMORY_WARNING", "70")),
+        thresholds_memory_critical=float(os.getenv("THRESHOLDS_MEMORY_CRITICAL", "85")),
+        thresholds_disk_warning=float(os.getenv("THRESHOLDS_DISK_WARNING", "80")),
+        thresholds_disk_critical=float(os.getenv("THRESHOLDS_DISK_CRITICAL", "90")),
+        ml_retrain_interval=int(os.getenv("ML_RETRAIN_INTERVAL", "3600")),
+        ml_window_size=int(os.getenv("ML_WINDOW_SIZE", "100")),
+        ml_anomaly_threshold=float(os.getenv("ML_ANOMALY_THRESHOLD", "0.05")),
+        intelligence_enabled=_bool("INTELLIGENCE_ENABLED", "false"),
+        intelligence_provider=os.getenv("INTELLIGENCE_PROVIDER", ""),
+        intelligence_api_url=os.getenv("INTELLIGENCE_API_URL", ""),
+        intelligence_api_key=os.getenv("INTELLIGENCE_API_KEY", ""),
+        intelligence_model=os.getenv("INTELLIGENCE_MODEL", ""),
+        alerter_alertmanager_enabled=_bool("ALERTER_ALERTMANAGER_ENABLED", "true"),
+        alerter_alertmanager_url=os.getenv(
+            "ALERTER_ALERTMANAGER_URL", "http://alertmanager:9093"
+        ),
+        alerter_fallback_webhook_enabled=_bool(
+            "ALERTER_FALLBACK_WEBHOOK_ENABLED", "false"
+        ),
+        alerter_fallback_webhook_url=os.getenv("ALERTER_FALLBACK_WEBHOOK_URL", ""),
+    )
 
-        # Configurer le logging
-        setup_logging(config)
-        logger = structlog.get_logger()
+    setup_logging(config.agent_log_level)
+    logger = structlog.get_logger()
+    logger.info("agent.starting")
 
-        logger.info(
-            "Configuration chargée",
-            config={
-                "elasticsearch_url": config.elasticsearch_url,
-                "analysis_interval": config.analysis_interval,
-                "log_level": config.log_level,
-            },
-        )
+    agent = SREAgent(config)
+    app = create_app(config, agent)
 
-        # Créer l'agent
-        agent = SREAgent(config)
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(agent.stop()))
 
-        # Gestionnaire d'arrêt propre
-        def signal_handler(signum, frame):
-            logger.info("Signal d'arrêt reçu", signal=signum)
-            asyncio.create_task(agent.stop())
+    uvicorn_config = uvicorn.Config(app, host="0.0.0.0", port=8080, log_level="warning")
+    server = uvicorn.Server(uvicorn_config)
 
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-
-        # Démarrer l'agent
-        logger.info("🤖 Agent SRE démarré - Analyse de la stack EFK en cours...")
-        await agent.start()
-
-    except KeyboardInterrupt:
-        logger.info("Arrêt demandé par l'utilisateur")
-    except Exception as e:
-        logger.error("Erreur fatale", error=str(e), exc_info=True)
-        sys.exit(1)
-    finally:
-        logger.info("🛑 Agent SRE arrêté")
+    await asyncio.gather(
+        agent.start(),
+        server.serve(),
+    )
 
 
 if __name__ == "__main__":

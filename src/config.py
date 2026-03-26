@@ -1,90 +1,66 @@
-"""
-Configuration de l'agent SRE
-"""
-
-import os
-from dataclasses import dataclass
+from pydantic import BaseModel, model_validator
 
 
-@dataclass
-class Config:
-    """Configuration de l'agent SRE"""
+class Config(BaseModel):
+    # Elasticsearch
+    elasticsearch_url: str
+    elasticsearch_username: str = ""
+    elasticsearch_password: str = ""
+    elasticsearch_secret_ref: str = ""
+    elasticsearch_indices_metrics: str = "sre-metrics"
+    elasticsearch_indices_logs: str = "sre-logs"
+    elasticsearch_indices_anomalies: str = "sre-anomalies"
 
-    def __init__(self):
-        """Initialise la configuration à partir des variables d'environnement"""
+    # Agent
+    agent_analysis_interval: int = 300
+    agent_log_level: str = "INFO"
 
-        # Elasticsearch
-        self.elasticsearch_url = os.getenv(
-            "ELASTICSEARCH_URL", "http://elasticsearch:9200"
-        )
-        self.elasticsearch_user = os.getenv("ELASTICSEARCH_USER", "elastic")
-        self.elasticsearch_password = os.getenv("ELASTICSEARCH_PASSWORD", "")
+    # Collectors
+    collectors_prometheus_enabled: bool = True
+    collectors_prometheus_url: str = "http://prometheus-server:9090"
+    collectors_metrics_server_enabled: bool = True
+    collectors_k8s_api_enabled: bool = True
+    collectors_k8s_api_watch_events: bool = True
 
-        # Index Elasticsearch
-        self.metrics_index = os.getenv("METRICS_INDEX", "metricbeat-*")
-        self.logs_index = os.getenv("LOGS_INDEX", "fluentd-*")
+    # Thresholds
+    thresholds_cpu_warning: float = 70.0
+    thresholds_cpu_critical: float = 85.0
+    thresholds_memory_warning: float = 70.0
+    thresholds_memory_critical: float = 85.0
+    thresholds_disk_warning: float = 80.0
+    thresholds_disk_critical: float = 90.0
 
-        # Kubernetes
-        self.k8s_in_cluster = os.getenv("K8S_IN_CLUSTER", "true").lower() == "true"
-        self.k8s_namespace = os.getenv("K8S_NAMESPACE", "default")
+    # ML
+    ml_retrain_interval: int = 3600
+    ml_window_size: int = 100
+    ml_anomaly_threshold: float = 0.05
 
-        # Analyse
-        self.analysis_interval = int(os.getenv("ANALYSIS_INTERVAL", "300"))  # 5 minutes
-        self.anomaly_threshold = float(os.getenv("ANOMALY_THRESHOLD", "0.05"))
+    # Intelligence (optional LLM)
+    intelligence_enabled: bool = False
+    intelligence_provider: str = ""
+    intelligence_api_url: str = ""
+    intelligence_api_key: str = ""
+    intelligence_api_key_secret_ref: str = ""
+    intelligence_model: str = ""
 
-        # Seuils d'alerte
-        self.cpu_threshold_warning = float(os.getenv("CPU_THRESHOLD_WARNING", "70.0"))
-        self.cpu_threshold_critical = float(os.getenv("CPU_THRESHOLD_CRITICAL", "85.0"))
-        self.memory_threshold_warning = float(
-            os.getenv("MEMORY_THRESHOLD_WARNING", "70.0")
-        )
-        self.memory_threshold_critical = float(
-            os.getenv("MEMORY_THRESHOLD_CRITICAL", "85.0")
-        )
+    # Alerter
+    alerter_alertmanager_enabled: bool = True
+    alerter_alertmanager_url: str = "http://alertmanager:9093"
+    alerter_fallback_webhook_enabled: bool = False
+    alerter_fallback_webhook_url: str = ""
 
-        # Alerting
-        self.webhook_url = os.getenv("WEBHOOK_URL")
-        self.slack_webhook = os.getenv("SLACK_WEBHOOK")
-        self.email_smtp_server = os.getenv("EMAIL_SMTP_SERVER", "")
-        self.email_smtp_port = int(os.getenv("EMAIL_SMTP_PORT", "587"))
-        self.email_username = os.getenv("EMAIL_USERNAME", "")
-        self.email_password = os.getenv("EMAIL_PASSWORD", "")
-        self.email_recipients = os.getenv("EMAIL_RECIPIENTS", "")
-
-        # Logging
-        self.log_level = os.getenv("LOG_LEVEL", "INFO")
-
-        # Modèles ML
-        self.model_retrain_interval = int(
-            os.getenv("MODEL_RETRAIN_INTERVAL", "3600")
-        )  # 1 heure
-        self.model_window_size = int(os.getenv("MODEL_WINDOW_SIZE", "100"))
-
-        # Validation
-        self._validate()
-
-    def _validate(self):
-        """Validation de la configuration"""
-        if self.analysis_interval < 60:
-            raise ValueError("ANALYSIS_INTERVAL doit être au moins 60 secondes")
-
-        if self.cpu_threshold_warning >= self.cpu_threshold_critical:
-            raise ValueError(
-                "CPU warning threshold doit être inférieur au threshold critique"
-            )
-
-        if self.memory_threshold_warning >= self.memory_threshold_critical:
-            raise ValueError(
-                "Memory warning threshold doit être inférieur au threshold critique"
-            )
-
-    def __post_init__(self):
-        """Validation de la configuration"""
+    @model_validator(mode="after")
+    def validate_config(self) -> "Config":
         if not self.elasticsearch_url:
-            raise ValueError("ELASTICSEARCH_URL est requis")
-
-        if self.analysis_interval < 60:
-            raise ValueError("ANALYSIS_INTERVAL doit être au moins 60 secondes")
-
-        if not (0 < self.anomaly_threshold < 1):
-            raise ValueError("ANOMALY_THRESHOLD doit être entre 0 et 1")
+            raise ValueError("elasticsearch_url is required")
+        if self.agent_analysis_interval < 60:
+            raise ValueError("agent_analysis_interval must be >= 60 seconds")
+        if not (0 < self.ml_anomaly_threshold < 1):
+            raise ValueError("ml_anomaly_threshold must be between 0 and 1")
+        if self.thresholds_cpu_warning >= self.thresholds_cpu_critical:
+            raise ValueError("cpu warning threshold must be less than critical")
+        if self.thresholds_memory_warning >= self.thresholds_memory_critical:
+            raise ValueError("memory warning threshold must be less than critical")
+        if self.thresholds_disk_warning >= self.thresholds_disk_critical:
+            raise ValueError("disk warning threshold must be less than critical")
+        return self
