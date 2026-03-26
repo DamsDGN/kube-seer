@@ -12,7 +12,10 @@ logger = structlog.get_logger()
 # PromQL queries
 NODE_CPU_QUERY = '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'
 NODE_MEMORY_QUERY = "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
-NODE_DISK_QUERY = '(1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100'
+NODE_DISK_QUERY = (
+    '(1 - (node_filesystem_avail_bytes{mountpoint="/"}'
+    ' / node_filesystem_size_bytes{mountpoint="/"})) * 100'
+)
 NODE_NETWORK_RX_QUERY = "rate(node_network_receive_bytes_total[5m])"
 NODE_NETWORK_TX_QUERY = "rate(node_network_transmit_bytes_total[5m])"
 
@@ -54,7 +57,11 @@ class PrometheusCollector(MetricsCollector):
                 "/api/v1/query", params={"query": promql}
             )
             if resp.status_code != 200:
-                logger.warning("prometheus_collector.query_failed", query=promql, status=resp.status_code)
+                logger.warning(
+                    "prometheus_collector.query_failed",
+                    query=promql,
+                    status=resp.status_code,
+                )
                 return []
             data = resp.json()
             if data.get("status") != "success":
@@ -110,9 +117,18 @@ class PrometheusCollector(MetricsCollector):
         mem_query = POD_MEMORY_QUERY
         restart_query = POD_RESTART_QUERY
         if ns_filter:
-            cpu_query = f"sum by (pod, namespace, node) (rate(container_cpu_usage_seconds_total{{{ns_filter}}}[5m])) * 1000"
-            mem_query = f"sum by (pod, namespace, node) (container_memory_working_set_bytes{{{ns_filter}}})"
-            restart_query = f"sum by (pod, namespace) (kube_pod_container_status_restarts_total{{{ns_filter}}})"
+            cpu_query = (
+                f"sum by (pod, namespace, node)"
+                f" (rate(container_cpu_usage_seconds_total{{{ns_filter}}}[5m])) * 1000"
+            )
+            mem_query = (
+                f"sum by (pod, namespace, node)"
+                f" (container_memory_working_set_bytes{{{ns_filter}}})"
+            )
+            restart_query = (
+                f"sum by (pod, namespace)"
+                f" (kube_pod_container_status_restarts_total{{{ns_filter}}})"
+            )
 
         cpu_results = await self._query(cpu_query)
         mem_results = await self._query(mem_query)

@@ -20,27 +20,36 @@ def setup_logging(log_level: str) -> None:
             if os.getenv("LOG_FORMAT") == "console"
             else structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            structlog.get_level_from_name(log_level)
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(log_level),
     )
 
 
 async def main() -> None:
+    def _bool(key: str, default: str) -> bool:
+        return os.getenv(key, default).lower() == "true"
+
     config = Config(
         elasticsearch_url=os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200"),
         elasticsearch_username=os.getenv("ELASTICSEARCH_USERNAME", ""),
         elasticsearch_password=os.getenv("ELASTICSEARCH_PASSWORD", ""),
-        elasticsearch_indices_metrics=os.getenv("ELASTICSEARCH_INDICES_METRICS", "sre-metrics"),
+        elasticsearch_indices_metrics=os.getenv(
+            "ELASTICSEARCH_INDICES_METRICS", "sre-metrics"
+        ),
         elasticsearch_indices_logs=os.getenv("ELASTICSEARCH_INDICES_LOGS", "sre-logs"),
-        elasticsearch_indices_anomalies=os.getenv("ELASTICSEARCH_INDICES_ANOMALIES", "sre-anomalies"),
+        elasticsearch_indices_anomalies=os.getenv(
+            "ELASTICSEARCH_INDICES_ANOMALIES", "sre-anomalies"
+        ),
         agent_analysis_interval=int(os.getenv("AGENT_ANALYSIS_INTERVAL", "300")),
         agent_log_level=os.getenv("AGENT_LOG_LEVEL", "INFO"),
-        collectors_prometheus_enabled=os.getenv("COLLECTORS_PROMETHEUS_ENABLED", "true").lower() == "true",
-        collectors_prometheus_url=os.getenv("COLLECTORS_PROMETHEUS_URL", "http://prometheus-server:9090"),
-        collectors_metrics_server_enabled=os.getenv("COLLECTORS_METRICS_SERVER_ENABLED", "true").lower() == "true",
-        collectors_k8s_api_enabled=os.getenv("COLLECTORS_K8S_API_ENABLED", "true").lower() == "true",
-        collectors_k8s_api_watch_events=os.getenv("COLLECTORS_K8S_API_WATCH_EVENTS", "true").lower() == "true",
+        collectors_prometheus_enabled=_bool("COLLECTORS_PROMETHEUS_ENABLED", "true"),
+        collectors_prometheus_url=os.getenv(
+            "COLLECTORS_PROMETHEUS_URL", "http://prometheus-server:9090"
+        ),
+        collectors_metrics_server_enabled=_bool(
+            "COLLECTORS_METRICS_SERVER_ENABLED", "true"
+        ),
+        collectors_k8s_api_enabled=_bool("COLLECTORS_K8S_API_ENABLED", "true"),
+        collectors_k8s_api_watch_events=_bool("COLLECTORS_K8S_API_WATCH_EVENTS", "true"),
         thresholds_cpu_warning=float(os.getenv("THRESHOLDS_CPU_WARNING", "70")),
         thresholds_cpu_critical=float(os.getenv("THRESHOLDS_CPU_CRITICAL", "85")),
         thresholds_memory_warning=float(os.getenv("THRESHOLDS_MEMORY_WARNING", "70")),
@@ -50,14 +59,18 @@ async def main() -> None:
         ml_retrain_interval=int(os.getenv("ML_RETRAIN_INTERVAL", "3600")),
         ml_window_size=int(os.getenv("ML_WINDOW_SIZE", "100")),
         ml_anomaly_threshold=float(os.getenv("ML_ANOMALY_THRESHOLD", "0.05")),
-        intelligence_enabled=os.getenv("INTELLIGENCE_ENABLED", "false").lower() == "true",
+        intelligence_enabled=_bool("INTELLIGENCE_ENABLED", "false"),
         intelligence_provider=os.getenv("INTELLIGENCE_PROVIDER", ""),
         intelligence_api_url=os.getenv("INTELLIGENCE_API_URL", ""),
         intelligence_api_key=os.getenv("INTELLIGENCE_API_KEY", ""),
         intelligence_model=os.getenv("INTELLIGENCE_MODEL", ""),
-        alerter_alertmanager_enabled=os.getenv("ALERTER_ALERTMANAGER_ENABLED", "true").lower() == "true",
-        alerter_alertmanager_url=os.getenv("ALERTER_ALERTMANAGER_URL", "http://alertmanager:9093"),
-        alerter_fallback_webhook_enabled=os.getenv("ALERTER_FALLBACK_WEBHOOK_ENABLED", "false").lower() == "true",
+        alerter_alertmanager_enabled=_bool("ALERTER_ALERTMANAGER_ENABLED", "true"),
+        alerter_alertmanager_url=os.getenv(
+            "ALERTER_ALERTMANAGER_URL", "http://alertmanager:9093"
+        ),
+        alerter_fallback_webhook_enabled=_bool(
+            "ALERTER_FALLBACK_WEBHOOK_ENABLED", "false"
+        ),
         alerter_fallback_webhook_url=os.getenv("ALERTER_FALLBACK_WEBHOOK_URL", ""),
     )
 
