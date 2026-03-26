@@ -8,6 +8,7 @@ from src.models import (
     StoredRecord,
     Anomaly,
     AnalysisResult,
+    Incident,
 )
 
 
@@ -156,6 +157,71 @@ class TestAnomaly:
         d = anomaly.model_dump()
         assert d["anomaly_id"] == "a-002"
         assert d["severity"] == 2
+
+
+class TestIncident:
+    def test_creation(self, sample_timestamp):
+        anomaly = Anomaly(
+            anomaly_id="a-001",
+            source="metrics",
+            severity=Severity.WARNING,
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            description="CPU warning",
+            score=0.7,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        incident = Incident(
+            incident_id="inc-001",
+            anomalies=[anomaly],
+            severity=Severity.WARNING,
+            score=0.7,
+            description="CPU warning on node-1",
+            resources=["node/node-1"],
+            timestamp=sample_timestamp,
+        )
+        assert incident.incident_id == "inc-001"
+        assert len(incident.anomalies) == 1
+        assert incident.severity == Severity.WARNING
+
+    def test_multi_anomaly_incident(self, sample_timestamp):
+        a1 = Anomaly(
+            anomaly_id="a-001",
+            source="metrics",
+            severity=Severity.WARNING,
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            description="Memory warning",
+            score=0.7,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        a2 = Anomaly(
+            anomaly_id="a-002",
+            source="events",
+            severity=Severity.CRITICAL,
+            resource_type="pod",
+            resource_name="web-abc",
+            namespace="default",
+            description="OOMKilled",
+            score=1.0,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        incident = Incident(
+            incident_id="inc-002",
+            anomalies=[a1, a2],
+            severity=Severity.CRITICAL,
+            score=1.0,
+            description="Correlated: Memory warning + OOMKilled",
+            resources=["node/node-1", "default/pod/web-abc"],
+            timestamp=sample_timestamp,
+        )
+        assert incident.severity == Severity.CRITICAL
+        assert len(incident.resources) == 2
 
 
 class TestAnalysisResult:
