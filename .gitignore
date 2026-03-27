@@ -1,3 +1,6 @@
+# Worktrees
+.worktrees/
+
 # Fichiers de configuration locale
 .env
 .env.local
@@ -129,6 +132,3 @@ kind-config.yaml
 secrets/
 credentials/
 *.secret
-
-# Git worktrees
-.worktrees/
