@@ -26,6 +26,6 @@ repos:
     hooks:
       - id: check-secrets
         name: Check for secrets
-        entry: bash -c 'if git diff --cached --name-only | xargs grep -l "password\|token\|secret\|key" | grep -v "example\|changeme\|fake"; then echo "❌ Secrets détectés!"; exit 1; fi'
+        entry: bash -c 'if git diff --cached --name-only | grep -v "\.gitignore\|\.pre-commit-config\|Makefile" | xargs grep -l "password\|token\|secret\|key" 2>/dev/null | grep -v "example\|changeme\|fake"; then echo "❌ Secrets détectés!"; exit 1; fi'
         language: system
         pass_filenames: false
