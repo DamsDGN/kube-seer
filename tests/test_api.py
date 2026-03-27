@@ -193,3 +193,26 @@ class TestAlertStatsEndpoint:
         data = resp.json()
         assert data["total_sent"] == 5
         assert data["alertmanager_sent"] == 3
+
+
+class TestPredictionsEndpoint:
+    @pytest.mark.asyncio
+    async def test_predictions_from_last_analysis(self, client, mock_agent):
+        mock_agent._last_analysis = AnalysisResult(
+            anomalies=[],
+            incidents=[],
+            predictions=[],
+            analysis_timestamp=datetime(2026, 1, 15, 10, 30, tzinfo=timezone.utc),
+        )
+        resp = await client.get("/predictions")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["predictions"] == []
+
+    @pytest.mark.asyncio
+    async def test_predictions_no_analysis_yet(self, client, mock_agent):
+        mock_agent._last_analysis = None
+        resp = await client.get("/predictions")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["predictions"] == []

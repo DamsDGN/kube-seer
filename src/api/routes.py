@@ -127,4 +127,15 @@ def create_app(config: Config, agent) -> FastAPI:
             }
         return {"incidents": [], "count": 0}
 
+    @app.get("/predictions")
+    async def get_predictions():
+        if agent._last_analysis and agent._last_analysis.predictions:
+            return {
+                "predictions": [
+                    p.model_dump() for p in agent._last_analysis.predictions
+                ],
+                "count": len(agent._last_analysis.predictions),
+            }
+        return {"predictions": [], "count": 0}
+
     return app
