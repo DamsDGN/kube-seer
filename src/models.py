@@ -90,6 +90,7 @@ class Anomaly(BaseModel):
 class AnalysisResult(BaseModel):
     anomalies: List[Anomaly]
     incidents: List["Incident"] = []
+    predictions: List["Prediction"] = []
     analysis_timestamp: datetime
     metrics_analyzed: int = 0
     logs_analyzed: int = 0
