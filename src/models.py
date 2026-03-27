@@ -106,4 +106,20 @@ class Incident(BaseModel):
     timestamp: datetime
 
 
+class Prediction(BaseModel):
+    prediction_id: str
+    resource_type: str
+    resource_name: str
+    namespace: str = ""
+    metric_name: str
+    current_value: float
+    predicted_value: float
+    threshold: float
+    hours_to_threshold: float
+    confidence: float
+    trend_per_hour: float
+    description: str
+    timestamp: datetime
+
+
 AnalysisResult.model_rebuild()
