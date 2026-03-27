@@ -90,6 +90,7 @@ class Anomaly(BaseModel):
 class AnalysisResult(BaseModel):
     anomalies: List[Anomaly]
     incidents: List["Incident"] = []
+    predictions: List["Prediction"] = []
     analysis_timestamp: datetime
     metrics_analyzed: int = 0
     logs_analyzed: int = 0
@@ -103,6 +104,22 @@ class Incident(BaseModel):
     score: float
     description: str
     resources: List[str]
+    timestamp: datetime
+
+
+class Prediction(BaseModel):
+    prediction_id: str
+    resource_type: str
+    resource_name: str
+    namespace: str = ""
+    metric_name: str
+    current_value: float
+    predicted_value: float
+    threshold: float
+    hours_to_threshold: float
+    confidence: float
+    trend_per_hour: float
+    description: str
     timestamp: datetime
 
 

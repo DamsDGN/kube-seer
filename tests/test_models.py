@@ -9,6 +9,7 @@ from src.models import (
     Anomaly,
     AnalysisResult,
     Incident,
+    Prediction,
 )
 
 
@@ -257,3 +258,45 @@ class TestAnalysisResult:
             events_analyzed=0,
         )
         assert len(result.anomalies) == 1
+
+
+class TestPrediction:
+    def test_creation(self, sample_timestamp):
+        pred = Prediction(
+            prediction_id="p-001",
+            resource_type="node",
+            resource_name="node-1",
+            namespace="",
+            metric_name="disk_usage_percent",
+            current_value=82.0,
+            predicted_value=100.0,
+            threshold=90.0,
+            hours_to_threshold=48.5,
+            confidence=0.92,
+            trend_per_hour=0.165,
+            description="Disk saturation estimated in 48h",
+            timestamp=sample_timestamp,
+        )
+        assert pred.prediction_id == "p-001"
+        assert pred.hours_to_threshold == 48.5
+        assert pred.confidence == 0.92
+
+    def test_to_dict(self, sample_timestamp):
+        pred = Prediction(
+            prediction_id="p-002",
+            resource_type="pod",
+            resource_name="db-0",
+            namespace="data",
+            metric_name="memory_usage_percent",
+            current_value=75.0,
+            predicted_value=90.0,
+            threshold=85.0,
+            hours_to_threshold=24.0,
+            confidence=0.85,
+            trend_per_hour=0.42,
+            description="Memory threshold in 24h",
+            timestamp=sample_timestamp,
+        )
+        d = pred.model_dump()
+        assert d["metric_name"] == "memory_usage_percent"
+        assert d["namespace"] == "data"

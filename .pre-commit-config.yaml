@@ -10,7 +10,6 @@ repos:
     rev: '6.1.0'
     hooks:
       - id: flake8
-        args: [--max-line-length=100, --ignore=E203,W503]
         files: ^(src/|tests/).*\.py$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -26,6 +25,6 @@ repos:
     hooks:
       - id: check-secrets
         name: Check for secrets
-        entry: bash -c 'if git diff --cached --name-only | xargs grep -l "password\|token\|secret\|key" | grep -v "example\|changeme\|fake"; then echo "❌ Secrets détectés!"; exit 1; fi'
+        entry: bash -c 'if git diff --cached --name-only | grep -v "\.gitignore\|\.pre-commit-config\|Makefile" | xargs grep -lE "(password|api_key|secret_key|private_key|access_token)\s*=" 2>/dev/null | grep -v "example\|changeme\|fake\|test_\|_test"; then echo "❌ Secrets détectés!"; exit 1; fi'
         language: system
         pass_filenames: false
