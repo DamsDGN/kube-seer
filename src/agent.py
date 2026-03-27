@@ -5,6 +5,7 @@ from typing import List, Optional
 import structlog
 
 from src.analyzer.correlator import Correlator
+from src.analyzer.predictor import Predictor
 from src.analyzer.events import EventAnalyzer
 from src.analyzer.logs import LogAnalyzer
 from src.analyzer.metrics import MetricsAnalyzer
@@ -44,6 +45,7 @@ class SREAgent:
         self._event_analyzer = EventAnalyzer(config)
         self._log_analyzer = LogAnalyzer(config, self._storage)
         self._correlator = Correlator(config)
+        self._predictor = Predictor(config)
         self._last_analysis: Optional[AnalysisResult] = None
         self._alerter = AlerterService(config)
 
@@ -182,9 +184,19 @@ class SREAgent:
             logger.error("agent.correlation_error", error=str(e))
             incidents = []
 
+        try:
+            predictions = await self._predictor.predict(
+                node_metrics=data.node_metrics,
+                pod_metrics=data.pod_metrics,
+            )
+        except Exception as e:
+            logger.error("agent.prediction_error", error=str(e))
+            predictions = []
+
         result = AnalysisResult(
             anomalies=anomalies,
             incidents=incidents,
+            predictions=predictions,
             analysis_timestamp=data.collection_timestamp,
             metrics_analyzed=len(data.node_metrics) + len(data.pod_metrics),
             logs_analyzed=0,
@@ -208,6 +220,17 @@ class SREAgent:
         ]
         stored = await self._storage.store_bulk(index, records)
         logger.info("agent.anomalies_stored", count=stored)
+        if result.predictions:
+            pred_records = [
+                StoredRecord(
+                    record_type="prediction",
+                    data=p.model_dump(),
+                    timestamp=p.timestamp,
+                )
+                for p in result.predictions
+            ]
+            stored = await self._storage.store_bulk(index, pred_records)
+            logger.info("agent.predictions_stored", count=stored)
 
     async def update_models(self, data: CollectedData) -> None:
         try:
@@ -221,6 +244,13 @@ class SREAgent:
             await self._log_analyzer.update_model()
         except Exception as e:
             logger.error("agent.log_model_update_error", error=str(e))
+        try:
+            await self._predictor.update(
+                node_metrics=data.node_metrics,
+                pod_metrics=data.pod_metrics,
+            )
+        except Exception as e:
+            logger.error("agent.predictor_update_error", error=str(e))
 
     async def run_cycle(self) -> None:
         logger.info("agent.cycle_start")

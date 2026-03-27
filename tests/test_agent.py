@@ -300,3 +300,33 @@ class TestSREAgentAlerts:
 
         await agent.run_cycle()
         agent._alerter.send_alerts.assert_awaited_once()
+
+
+class TestSREAgentPrediction:
+    @pytest.mark.asyncio
+    async def test_run_cycle_includes_predictions(self, agent, sample_timestamp):
+        agent.collect = AsyncMock(
+            return_value=CollectedData(
+                node_metrics=[],
+                pod_metrics=[],
+                events=[],
+                resource_states=[],
+                collection_timestamp=sample_timestamp,
+            )
+        )
+        agent.analyze = AsyncMock(
+            return_value=AnalysisResult(
+                anomalies=[],
+                incidents=[],
+                predictions=[],
+                analysis_timestamp=sample_timestamp,
+            )
+        )
+        agent.store = AsyncMock()
+        agent.store_anomalies = AsyncMock()
+        agent.update_models = AsyncMock()
+        agent._alerter = AsyncMock()
+        agent._alerter.send_alerts = AsyncMock()
+
+        await agent.run_cycle()
+        agent.analyze.assert_awaited_once()
