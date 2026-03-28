@@ -187,6 +187,25 @@ install_prometheus() {
 }
 
 # ------------------------------------------------------------
+install_metrics_server() {
+    log_section "Metrics Server"
+
+    # Kind kubelets use self-signed certs — requires --kubelet-insecure-tls
+    helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update
+
+    helm upgrade --install metrics-server metrics-server/metrics-server \
+        --namespace kube-system \
+        --set args="{--kubelet-insecure-tls}" \
+        --set resources.requests.cpu=50m \
+        --set resources.requests.memory=64Mi \
+        --set "resources.limits.memory=128Mi" \
+        --wait \
+        --timeout 120s
+
+    log_info "Metrics Server prêt"
+}
+
+# ------------------------------------------------------------
 install_fluent_bit() {
     # NOTE: Fluent Bit is installed here for local development only.
     # In production, clients provision their own log shipper.
@@ -291,6 +310,7 @@ main() {
     install_eck
     install_elasticsearch
     install_prometheus
+    install_metrics_server
     install_fluent_bit
     deploy_kube_seer
     print_summary
