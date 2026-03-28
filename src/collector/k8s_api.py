@@ -47,6 +47,7 @@ class KubernetesApiCollector(StateCollector):
         self._batch_api: Optional[client.BatchV1Api] = None
         self._autoscaling_api: Optional[client.AutoscalingV1Api] = None
         self._networking_api: Optional[client.NetworkingV1Api] = None
+        self._policy_api: Optional[client.PolicyV1Api] = None
 
     async def connect(self) -> None:
         try:
@@ -58,6 +59,7 @@ class KubernetesApiCollector(StateCollector):
         self._batch_api = client.BatchV1Api()
         self._autoscaling_api = client.AutoscalingV1Api()
         self._networking_api = client.NetworkingV1Api()
+        self._policy_api = client.PolicyV1Api()
         logger.info("k8s_api_collector.connected")
 
     async def close(self) -> None:
@@ -66,6 +68,7 @@ class KubernetesApiCollector(StateCollector):
         self._batch_api = None
         self._autoscaling_api = None
         self._networking_api = None
+        self._policy_api = None
 
     async def is_healthy(self) -> bool:
         if not self._core_api:
@@ -150,6 +153,11 @@ class KubernetesApiCollector(StateCollector):
         states: List[ResourceState] = []
         now = datetime.now(timezone.utc)
 
+        states.extend(await self._collect_nodes(now))
+        states.extend(await self._collect_services(namespace, now))
+        states.extend(await self._collect_pdbs(namespace, now))
+        states.extend(await self._collect_pvs(now))
+        states.extend(await self._collect_namespaces(now))
         states.extend(await self._collect_deployments(namespace, now))
         states.extend(await self._collect_statefulsets(namespace, now))
         states.extend(await self._collect_daemonsets(namespace, now))
@@ -162,6 +170,176 @@ class KubernetesApiCollector(StateCollector):
         states.extend(await self._collect_ingresses(namespace, now))
 
         return states
+
+    async def _collect_nodes(self, now: datetime) -> List[ResourceState]:
+        if not self._core_api:
+            return []
+        try:
+            result = await asyncio.to_thread(self._core_api.list_node)
+        except Exception as e:
+            logger.error("k8s_api_collector.nodes_error", error=str(e))
+            return []
+
+        states = []
+        for node in result.items:
+            cond_map = {c.type: c.status for c in (node.status.conditions or [])}
+            states.append(
+                ResourceState(
+                    kind="Node",
+                    name=node.metadata.name,
+                    namespace="",
+                    conditions={
+                        "ready": cond_map.get("Ready") == "True",
+                        "memory_pressure": cond_map.get("MemoryPressure") == "True",
+                        "disk_pressure": cond_map.get("DiskPressure") == "True",
+                        "pid_pressure": cond_map.get("PIDPressure") == "True",
+                        "unschedulable": bool(node.spec.unschedulable),
+                    },
+                    timestamp=now,
+                )
+            )
+        return states
+
+    async def _collect_services(
+        self, namespace: str, now: datetime
+    ) -> List[ResourceState]:
+        if not self._core_api:
+            return []
+        try:
+            if namespace:
+                svc_result = await asyncio.to_thread(
+                    self._core_api.list_namespaced_service, namespace
+                )
+                ep_result = await asyncio.to_thread(
+                    self._core_api.list_namespaced_endpoints, namespace
+                )
+            else:
+                svc_result = await asyncio.to_thread(
+                    self._core_api.list_service_for_all_namespaces
+                )
+                ep_result = await asyncio.to_thread(
+                    self._core_api.list_endpoints_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.services_error", error=str(e))
+            return []
+
+        ep_map = {
+            (ep.metadata.namespace, ep.metadata.name): ep for ep in ep_result.items
+        }
+
+        states = []
+        for svc in svc_result.items:
+            ns = svc.metadata.namespace
+            name = svc.metadata.name
+            has_selector = bool(svc.spec.selector)
+            if not has_selector:
+                continue  # ExternalName, headless, or manually managed — skip
+            ep = ep_map.get((ns, name))
+            if ep and ep.subsets:
+                ready = sum(len(s.addresses or []) for s in ep.subsets)
+            else:
+                ready = 0
+            states.append(
+                ResourceState(
+                    kind="Service",
+                    name=name,
+                    namespace=ns,
+                    ready_replicas=ready,
+                    conditions={
+                        "ready_endpoints": ready,
+                        "service_type": svc.spec.type or "ClusterIP",
+                        "cluster_ip": svc.spec.cluster_ip or "",
+                    },
+                    timestamp=now,
+                )
+            )
+        return states
+
+    async def _collect_pdbs(self, namespace: str, now: datetime) -> List[ResourceState]:
+        if not self._policy_api:
+            return []
+        try:
+            if namespace:
+                result = await asyncio.to_thread(
+                    self._policy_api.list_namespaced_pod_disruption_budget, namespace
+                )
+            else:
+                result = await asyncio.to_thread(
+                    self._policy_api.list_pod_disruption_budget_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.pdbs_error", error=str(e))
+            return []
+
+        return [
+            ResourceState(
+                kind="PodDisruptionBudget",
+                name=pdb.metadata.name,
+                namespace=pdb.metadata.namespace,
+                conditions={
+                    "current_healthy": pdb.status.current_healthy or 0,
+                    "desired_healthy": pdb.status.desired_healthy or 0,
+                    "disruptions_allowed": pdb.status.disruptions_allowed or 0,
+                    "expected_pods": pdb.status.expected_pods or 0,
+                },
+                timestamp=now,
+            )
+            for pdb in result.items
+        ]
+
+    async def _collect_pvs(self, now: datetime) -> List[ResourceState]:
+        if not self._core_api:
+            return []
+        try:
+            result = await asyncio.to_thread(self._core_api.list_persistent_volume)
+        except Exception as e:
+            logger.error("k8s_api_collector.pvs_error", error=str(e))
+            return []
+
+        states = []
+        for pv in result.items:
+            claim_ref = ""
+            if pv.spec.claim_ref:
+                claim_ref = f"{pv.spec.claim_ref.namespace}/{pv.spec.claim_ref.name}"
+            states.append(
+                ResourceState(
+                    kind="PersistentVolume",
+                    name=pv.metadata.name,
+                    namespace="",
+                    conditions={
+                        "phase": pv.status.phase or "Unknown",
+                        "capacity": (pv.spec.capacity or {}).get("storage", ""),
+                        "storage_class": pv.spec.storage_class_name or "",
+                        "reclaim_policy": (
+                            pv.spec.persistent_volume_reclaim_policy or ""
+                        ),
+                        "claim_ref": claim_ref,
+                    },
+                    timestamp=now,
+                )
+            )
+        return states
+
+    async def _collect_namespaces(self, now: datetime) -> List[ResourceState]:
+        if not self._core_api:
+            return []
+        try:
+            result = await asyncio.to_thread(self._core_api.list_namespace)
+        except Exception as e:
+            logger.error("k8s_api_collector.namespaces_error", error=str(e))
+            return []
+
+        return [
+            ResourceState(
+                kind="Namespace",
+                name=ns.metadata.name,
+                namespace="",
+                conditions={"phase": ns.status.phase or "Unknown"},
+                timestamp=now,
+            )
+            for ns in result.items
+        ]
 
     async def _collect_deployments(
         self, namespace: str, now: datetime

@@ -6,7 +6,7 @@ metadata:
     {{- include "kube-seer.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
-    resources: ["pods", "nodes", "events", "services", "namespaces", "persistentvolumes", "persistentvolumeclaims", "resourcequotas", "limitranges"]
+    resources: ["pods", "nodes", "endpoints", "events", "services", "namespaces", "persistentvolumes", "persistentvolumeclaims", "resourcequotas", "limitranges"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
@@ -16,6 +16,9 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["autoscaling"]
     resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses", "networkpolicies"]
