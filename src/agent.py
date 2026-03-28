@@ -185,7 +185,7 @@ class SREAgent:
             incidents = []
 
         try:
-            predictions = await self._predictor.predict(
+            predictions, _ = await self._predictor.predict(
                 node_metrics=data.node_metrics,
                 pod_metrics=data.pod_metrics,
             )
