@@ -7,6 +7,7 @@ metadata:
 data:
   ELASTICSEARCH_URL: {{ .Values.elasticsearch.url | quote }}
   ELASTICSEARCH_USERNAME: {{ .Values.elasticsearch.username | quote }}
+  ELASTICSEARCH_VERIFY_CERTS: {{ .Values.elasticsearch.verifyTls | quote }}
   ELASTICSEARCH_INDICES_METRICS: {{ .Values.elasticsearch.indices.metrics | quote }}
   ELASTICSEARCH_INDICES_LOGS: {{ .Values.elasticsearch.indices.logs | quote }}
   ELASTICSEARCH_INDICES_ANOMALIES: {{ .Values.elasticsearch.indices.anomalies | quote }}

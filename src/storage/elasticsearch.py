@@ -25,6 +25,9 @@ class ElasticsearchStorage(BaseStorage):
                 self._config.elasticsearch_username,
                 self._config.elasticsearch_password,
             )
+        if not self._config.elasticsearch_verify_certs:
+            kwargs["verify_certs"] = False
+            kwargs["ssl_show_warn"] = False
         self._client = AsyncElasticsearch(**kwargs)
         info = await self._client.info()
         logger.info(

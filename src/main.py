@@ -37,6 +37,7 @@ async def main() -> None:
         elasticsearch_url=os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200"),
         elasticsearch_username=os.getenv("ELASTICSEARCH_USERNAME", ""),
         elasticsearch_password=os.getenv("ELASTICSEARCH_PASSWORD", ""),
+        elasticsearch_verify_certs=_bool("ELASTICSEARCH_VERIFY_CERTS", "true"),
         elasticsearch_indices_metrics=os.getenv(
             "ELASTICSEARCH_INDICES_METRICS", "sre-metrics"
         ),
