@@ -15,6 +15,22 @@ CERT_MANAGER_VERSION="v1.14.5"
 ECK_VERSION="2.11.1"
 ES_VERSION="8.13.0"
 
+# Elasticsearch index names
+# Set USE_DAILY_LOG_INDICES=true to use Logstash format (sre-logs-YYYY.MM.DD),
+# which enables automatic data retention by simply deleting old daily indices.
+# Set to false to use a single fixed index (sre-logs).
+USE_DAILY_LOG_INDICES="${USE_DAILY_LOG_INDICES:-true}"
+
+INDEX_METRICS="sre-metrics"
+INDEX_LOGS_PREFIX="sre-logs"
+INDEX_ANOMALIES="sre-anomalies"
+
+if [ "${USE_DAILY_LOG_INDICES}" = "true" ]; then
+    INDEX_LOGS_QUERY="sre-logs-*"   # matches all daily indices
+else
+    INDEX_LOGS_QUERY="sre-logs"     # single fixed index
+fi
+
 COLOR_GREEN="\033[0;32m"
 COLOR_YELLOW="\033[1;33m"
 COLOR_RED="\033[0;31m"
@@ -187,12 +203,20 @@ install_prometheus() {
 
 # ------------------------------------------------------------
 install_fluent_bit() {
-    log_section "Fluent Bit (log shipper → sre-logs)"
-
     local es_password
     es_password=$(kubectl get secret elasticsearch-es-elastic-user \
         -n "${NAMESPACE_ELASTIC}" \
         -o jsonpath='{.data.elastic}' | base64 -d)
+
+    local fluent_bit_index_config
+    if [ "${USE_DAILY_LOG_INDICES}" = "true" ]; then
+        log_section "Fluent Bit (log shipper → ${INDEX_LOGS_PREFIX}-YYYY.MM.DD)"
+        fluent_bit_index_config="    Logstash_Format   On
+    Logstash_Prefix   ${INDEX_LOGS_PREFIX}"
+    else
+        log_section "Fluent Bit (log shipper → ${INDEX_LOGS_PREFIX})"
+        fluent_bit_index_config="    Index             ${INDEX_LOGS_PREFIX}"
+    fi
 
     helm repo add fluent https://fluent.github.io/helm-charts --force-update
 
@@ -203,20 +227,20 @@ install_fluent_bit() {
         --set resources.requests.memory=64Mi \
         --set resources.limits.memory=128Mi \
         --set config.outputs="[OUTPUT]
-    Name            es
-    Match           kube.*
-    Host            elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc
-    Port            9200
-    HTTP_User       elastic
-    HTTP_Passwd     ${es_password}
-    Index           sre-logs
+    Name              es
+    Match             kube.*
+    Host              elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc
+    Port              9200
+    HTTP_User         elastic
+    HTTP_Passwd       ${es_password}
+${fluent_bit_index_config}
     Suppress_Type_Name On
-    tls             On
-    tls.verify      Off" \
+    tls               On
+    tls.verify        Off" \
         --wait \
         --timeout 120s
 
-    log_info "Fluent Bit prêt — logs K8s → sre-logs"
+    log_info "Fluent Bit prêt — logs K8s → ${INDEX_LOGS_QUERY}"
 }
 
 # ------------------------------------------------------------
@@ -249,6 +273,9 @@ deploy_kube_seer() {
         --set elasticsearch.username=elastic \
         --set "elasticsearch.password=${es_password}" \
         --set elasticsearch.verifyTls=false \
+        --set elasticsearch.indices.metrics="${INDEX_METRICS}" \
+        --set "elasticsearch.indices.logs=${INDEX_LOGS_QUERY}" \
+        --set elasticsearch.indices.anomalies="${INDEX_ANOMALIES}" \
         --set collectors.prometheus.url="http://kube-prometheus-stack-prometheus.${NAMESPACE_MONITORING}.svc:9090" \
         --set alerter.alertmanager.url="http://kube-prometheus-stack-alertmanager.${NAMESPACE_MONITORING}.svc:9093" \
         --set service.type=NodePort \
