@@ -8,6 +8,8 @@ pyyaml==6.0.2
 # Web framework
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+httpx>=0.25.0
+aiohttp>=3.8.0
 
 # Kubernetes client
 kubernetes==30.1.0

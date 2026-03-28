@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import signal
 import os
 
@@ -22,7 +23,9 @@ def setup_logging(log_level: str) -> None:
                 else structlog.processors.JSONRenderer()
             ),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        wrapper_class=structlog.make_filtering_bound_logger(
+            logging.getLevelName(log_level)
+        ),
     )
 
 
