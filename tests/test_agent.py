@@ -90,6 +90,7 @@ class TestSREAgentCollect:
         agent._metrics_server.collect_pod_metrics = AsyncMock(return_value=[])
         agent._k8s_api.collect_events = AsyncMock(return_value=[event])
         agent._k8s_api.collect_resource_states = AsyncMock(return_value=[state])
+        agent._k8s_api.collect_pod_limits = AsyncMock(return_value={})
 
         data = await agent.collect()
         assert len(data.node_metrics) == 1
@@ -330,3 +331,83 @@ class TestSREAgentPrediction:
 
         await agent.run_cycle()
         agent.analyze.assert_awaited_once()
+
+
+class TestSREAgentPodEnrichment:
+    @pytest.mark.asyncio
+    async def test_collect_enriches_pods_with_limits(self, agent, sample_timestamp):
+        from src.models import PodMetrics, NodeMetrics
+
+        pod = PodMetrics(
+            pod_name="web-0",
+            namespace="default",
+            node_name="node-1",
+            cpu_usage_millicores=100,
+            memory_usage_bytes=50000000,
+            restart_count=0,
+            status="Running",
+            timestamp=sample_timestamp,
+        )
+        node = NodeMetrics(
+            node_name="node-1",
+            cpu_usage_percent=30.0,
+            memory_usage_percent=40.0,
+            disk_usage_percent=50.0,
+            network_rx_bytes=0,
+            network_tx_bytes=0,
+            conditions={},
+            timestamp=sample_timestamp,
+        )
+        agent._prometheus = AsyncMock()
+        agent._prometheus.collect_node_metrics = AsyncMock(return_value=[node])
+        agent._prometheus.collect_pod_metrics = AsyncMock(return_value=[pod])
+        agent._metrics_server = None
+        agent._k8s_api = AsyncMock()
+        agent._k8s_api.collect_events = AsyncMock(return_value=[])
+        agent._k8s_api.collect_resource_states = AsyncMock(return_value=[])
+        agent._k8s_api.collect_pod_limits = AsyncMock(
+            return_value={("default", "web-0"): (500, 268435456)}
+        )
+
+        data = await agent.collect()
+        assert data.pod_metrics[0].cpu_limit_millicores == 500
+        assert data.pod_metrics[0].memory_limit_bytes == 268435456
+
+
+class TestSREAgentAnalyzeTuple:
+    @pytest.mark.asyncio
+    async def test_analyze_handles_predictor_tuple(self, agent, sample_timestamp):
+        from src.models import Anomaly, Severity, CollectedData
+
+        policy_anomaly = Anomaly(
+            anomaly_id="a-policy",
+            source="policy",
+            severity=Severity.WARNING,
+            resource_type="pod",
+            resource_name="web-0",
+            namespace="default",
+            description="no memory limit",
+            score=0.5,
+            details={},
+            timestamp=sample_timestamp,
+        )
+        agent._metrics_analyzer = AsyncMock()
+        agent._metrics_analyzer.analyze = AsyncMock(return_value=[])
+        agent._event_analyzer = AsyncMock()
+        agent._event_analyzer.analyze = AsyncMock(return_value=[])
+        agent._log_analyzer = AsyncMock()
+        agent._log_analyzer.analyze = AsyncMock(return_value=[])
+        agent._correlator = AsyncMock()
+        agent._correlator.correlate = AsyncMock(return_value=[])
+        agent._predictor = AsyncMock()
+        agent._predictor.predict = AsyncMock(return_value=([], [policy_anomaly]))
+
+        data = CollectedData(
+            node_metrics=[],
+            pod_metrics=[],
+            events=[],
+            resource_states=[],
+            collection_timestamp=sample_timestamp,
+        )
+        result = await agent.analyze(data)
+        assert any(a.anomaly_id == "a-policy" for a in result.anomalies)
