@@ -1,6 +1,9 @@
 # Worktrees
 .worktrees/
 
+# Claude
+.claude
+
 # Environnement local
 local-env/
 
