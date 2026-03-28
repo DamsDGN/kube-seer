@@ -12,9 +12,10 @@ env:
   IMAGE_NAME: damsdgn29/kube-seer
 
 jobs:
-  # Tests et validation du code
+  # Tests et validation du code (PR uniquement — déjà validés avant merge)
   test:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
@@ -117,7 +118,7 @@ jobs:
 
   # Build et push de l'image Docker
   build-and-push:
-    needs: [test, helm-lint]
+    needs: [helm-lint]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
 
