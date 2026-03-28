@@ -7,7 +7,7 @@ import numpy as np
 import structlog
 
 from src.config import Config
-from src.models import NodeMetrics, PodMetrics, Prediction
+from src.models import Anomaly, NodeMetrics, PodMetrics, Prediction, Severity
 
 logger = structlog.get_logger()
 
@@ -45,8 +45,9 @@ class Predictor:
 
     async def predict(
         self, node_metrics: List[NodeMetrics], pod_metrics: List[PodMetrics]
-    ) -> tuple:
+    ) -> tuple[List[Prediction], List[Anomaly]]:
         predictions: List[Prediction] = []
+        anomalies: List[Anomaly] = []
 
         thresholds = {
             "cpu_usage_percent": self._config.thresholds_cpu_critical,
@@ -71,7 +72,58 @@ class Predictor:
                 if pred:
                     predictions.append(pred)
 
-        return predictions, []
+        for pod in pod_metrics:
+            key = f"{pod.namespace}/pod/{pod.pod_name}"
+
+            if pod.memory_limit_bytes is None:
+                anomalies.append(
+                    Anomaly(
+                        anomaly_id=str(uuid.uuid4()),
+                        source="policy",
+                        severity=Severity.WARNING,
+                        resource_type="pod",
+                        resource_name=pod.pod_name,
+                        namespace=pod.namespace,
+                        description=(
+                            f"Pod {pod.namespace}/{pod.pod_name} has no memory limit "
+                            f"defined (OOM risk)"
+                        ),
+                        score=0.5,
+                        details={},
+                        timestamp=pod.timestamp,
+                    )
+                )
+            else:
+                mem_pct = pod.memory_usage_bytes / pod.memory_limit_bytes * 100.0
+                pred = self._predict_metric(
+                    key=key,
+                    metric_name="memory_pct",
+                    current_value=mem_pct,
+                    threshold=self._config.thresholds_memory_critical,
+                    resource_type="pod",
+                    resource_name=pod.pod_name,
+                    namespace=pod.namespace,
+                    timestamp=pod.timestamp,
+                )
+                if pred:
+                    predictions.append(pred)
+
+            if pod.cpu_limit_millicores:
+                cpu_pct = pod.cpu_usage_millicores / pod.cpu_limit_millicores * 100.0
+                pred = self._predict_metric(
+                    key=key,
+                    metric_name="cpu_pct",
+                    current_value=cpu_pct,
+                    threshold=self._config.thresholds_cpu_critical,
+                    resource_type="pod",
+                    resource_name=pod.pod_name,
+                    namespace=pod.namespace,
+                    timestamp=pod.timestamp,
+                )
+                if pred:
+                    predictions.append(pred)
+
+        return predictions, anomalies
 
     def _append(self, key: str, metric: str, ts_h: float, value: float) -> None:
         buf = self._history[key][metric]
