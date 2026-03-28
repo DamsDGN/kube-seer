@@ -11,10 +11,12 @@ elasticsearch:
   secretRef: ""
   verifyTls: true
   indices:
+    # Index where kube-seer stores collected metrics
     metrics: "sre-metrics"
-    # Set logs to match your existing log shipper index name or pattern (e.g. "my-logs-*")
-    logs: "sre-logs"
+    # Index where kube-seer stores detected anomalies
     anomalies: "sre-anomalies"
+    # Set to match your existing log shipper index name or pattern (e.g. "my-logs-*")
+    logs: "sre-logs"
 
 # Collectors
 collectors:
