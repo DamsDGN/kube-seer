@@ -55,7 +55,7 @@ spec:
       text: |-
         {{ "{{" }} range .Alerts {{ "}}" }}
         *Resource:* `{{ "{{" }} if .Labels.namespace {{ "}}" }}{{ "{{" }} .Labels.namespace {{ "}}" }}/{{ "{{" }} end {{ "}}" }}{{ "{{" }} .Labels.resource_name {{ "}}" }}`
-        *Severity:* {{ "{{" }} if eq .Labels.severity "critical" {{ "}}" }}:red_circle: critical{{ "{{" }} else if eq .Labels.severity "warning" {{ "}}" }}:warning: warning{{ "{{" }} else {{ "}}" }}:information_source: info{{ "{{" }} end {{ "}}" }} | *Source:* {{ "{{" }} .Labels.source {{ "}}" }}{{ "{{" }} if .Annotations.score {{ "}}" }} | *Score:* {{ "{{" }} .Annotations.score {{ "}}" }}{{ "{{" }} end {{ "}}" }}
+        *Severity:* {{ "{{" }} if eq .Labels.severity "critical" {{ "}}" }}:red_circle: critical{{ "{{" }} else if eq .Labels.severity "warning" {{ "}}" }}:warning: warning{{ "{{" }} else {{ "}}" }}:information_source: info{{ "{{" }} end {{ "}}" }} | *Source:* {{ "{{" }} .Labels.source {{ "}}" }}
         *Description:* {{ "{{" }} .Annotations.description {{ "}}" }}
         {{ "{{" }} end {{ "}}" }}
 {{- end }}
