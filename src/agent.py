@@ -9,6 +9,7 @@ from src.analyzer.predictor import Predictor
 from src.analyzer.events import EventAnalyzer
 from src.analyzer.logs import LogAnalyzer
 from src.analyzer.metrics import MetricsAnalyzer
+from src.analyzer.resources import ResourceStateAnalyzer
 from src.collector.k8s_api import KubernetesApiCollector
 from src.collector.metrics_server import MetricsServerCollector
 from src.collector.prometheus import PrometheusCollector
@@ -49,6 +50,7 @@ class SREAgent:
         self._metrics_analyzer = MetricsAnalyzer(config)
         self._event_analyzer = EventAnalyzer(config)
         self._log_analyzer = LogAnalyzer(config, self._storage)
+        self._resource_analyzer = ResourceStateAnalyzer(config)
         self._correlator = Correlator(config)
         self._predictor = Predictor(config)
         self._last_analysis: Optional[AnalysisResult] = None
@@ -207,6 +209,14 @@ class SREAgent:
             anomalies.extend(log_anomalies)
         except Exception as e:
             logger.error("agent.log_analysis_error", error=str(e))
+
+        try:
+            resource_anomalies = await self._resource_analyzer.analyze(
+                resource_states=data.resource_states,
+            )
+            anomalies.extend(resource_anomalies)
+        except Exception as e:
+            logger.error("agent.resource_analysis_error", error=str(e))
 
         try:
             incidents = await self._correlator.correlate(anomalies=anomalies, data=data)
