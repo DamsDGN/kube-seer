@@ -35,6 +35,15 @@ class ElasticsearchStorage(BaseStorage):
             version=info["version"]["number"],
         )
 
+    async def ensure_indices(self, indices: List[str]) -> None:
+        """Create kube-seer-owned indices if they do not exist."""
+        if not self._client:
+            return
+        for index in indices:
+            if not await self._client.indices.exists(index=index):
+                await self._client.indices.create(index=index)
+                logger.info("elasticsearch_storage.index_created", index=index)
+
     async def close(self) -> None:
         if self._client:
             await self._client.close()

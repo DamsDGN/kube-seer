@@ -52,6 +52,12 @@ class SREAgent:
     async def initialize(self) -> None:
         logger.info("agent.initializing")
         await self._storage.connect()
+        await self._storage.ensure_indices(
+            [
+                self._config.elasticsearch_indices_metrics,
+                self._config.elasticsearch_indices_anomalies,
+            ]
+        )
         if self._prometheus:
             await self._prometheus.connect()
         if self._metrics_server:
