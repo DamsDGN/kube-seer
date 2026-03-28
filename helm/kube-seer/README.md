@@ -1,208 +1,128 @@
-# EFK SRE Agent Helm Chart
+# kube-seer Helm Chart
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-Chart Helm pour déployer l'Agent IA SRE pour l'analyse automatisée des métriques et logs EFK sur Kubernetes.
+Helm chart for deploying kube-seer — an intelligent SRE agent for Kubernetes that collects metrics, detects anomalies, correlates incidents, and predicts resource saturation.
 
-## Prérequis
+## Prerequisites
 
 - Kubernetes 1.20+
 - Helm 3.0+
-- Cluster avec stack EFK déployée (ou du moins Elasticsearch)
+- Elasticsearch (external, e.g. via ECK)
+- Prometheus (optional but recommended)
 
 ## Installation
 
-### Installation simple
+### Minimal install (no authentication)
 
 ```bash
-# Ajouter le repo (si disponible)
-helm repo add kube-seer https://damsdgn.github.io/kube-seer/
-
-# Installer avec la configuration par défaut
-helm install my-sre-agent kube-seer/kube-seer
+helm install kube-seer ./helm/kube-seer \
+  --namespace monitoring \
+  --create-namespace \
+  --set elasticsearch.url=http://elasticsearch:9200
 ```
 
-### Installation locale (développement)
+### With Elasticsearch authentication
 
 ```bash
-# Depuis le répertoire du projet
-helm install my-sre-agent ./helm/kube-seer/
+# Inline password (chart creates a Secret)
+helm install kube-seer ./helm/kube-seer \
+  --namespace monitoring \
+  --create-namespace \
+  --set elasticsearch.url=http://elasticsearch:9200 \
+  --set elasticsearch.username=elastic \
+  --set elasticsearch.password=your-password
+
+# Reference an existing Kubernetes Secret
+helm install kube-seer ./helm/kube-seer \
+  --namespace monitoring \
+  --create-namespace \
+  --set elasticsearch.url=http://elasticsearch:9200 \
+  --set elasticsearch.secretRef=my-existing-secret
 ```
 
-### Installation avec configuration personnalisée
+### Kind local environment
 
 ```bash
-# Créer un fichier values-custom.yaml
-cat > values-custom.yaml << EOF
-config:
-  elasticsearch:
-    url: "https://my-elasticsearch.example.com:9200"
-    user: "my-user"
-  analysis:
-    interval: 180  # 3 minutes
-  thresholds:
-    cpu:
-      warning: 60.0
-      critical: 80.0
-
-alerting:
-  slack:
-    enabled: true
-    webhook: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
-
-ingress:
-  enabled: true
-  className: "nginx"
-  hosts:
-    - host: sre-agent.mydomain.com
-      paths:
-        - path: /
-          pathType: Prefix
-
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 512Mi
-EOF
-
-# Installer avec la configuration personnalisée
-helm install my-sre-agent ./helm/kube-seer/ -f values-custom.yaml
+# Spin up a full local stack automatically
+make kind-up
 ```
 
-## Configuration
+## Key Configuration
 
-### Elasticsearch
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `elasticsearch.url` | Elasticsearch URL (required) | `""` |
+| `elasticsearch.username` | Username (optional) | `""` |
+| `elasticsearch.password` | Password — creates a Secret (optional) | `""` |
+| `elasticsearch.secretRef` | Name of an existing K8s Secret with credentials (optional) | `""` |
+| `collectors.prometheus.url` | Prometheus URL | `http://prometheus-server:9090` |
+| `alerter.alertmanager.url` | Alertmanager URL | `http://alertmanager:9093` |
+| `agent.analysisInterval` | Analysis cycle in seconds | `300` |
+| `service.type` | Service type (`ClusterIP` or `NodePort`) | `ClusterIP` |
+| `service.nodePort` | NodePort number (only when type=NodePort) | `""` |
+| `serviceMonitor.enabled` | Enable Prometheus ServiceMonitor | `false` |
 
-L'agent nécessite une connexion à Elasticsearch. Configurez l'URL et les credentials :
+See [values.yaml](values.yaml) for the full list of options.
 
+## Elasticsearch Authentication
+
+Authentication is **optional**. Three modes are supported:
+
+**No auth** (open Elasticsearch):
 ```yaml
-config:
-  elasticsearch:
-    url: "http://elasticsearch.elastic-system.svc.cluster.local:9200"
-    user: "elastic"
-    passwordSecret: "elasticsearch-credentials"  # Secret contenant le mot de passe
-    passwordKey: "password"
+elasticsearch:
+  url: http://elasticsearch:9200
 ```
 
-### Secrets
+**Inline credentials** (chart manages the Secret):
+```yaml
+elasticsearch:
+  url: http://elasticsearch:9200
+  username: elastic
+  password: your-password
+```
 
-Après installation, configurez les secrets :
+**External secret** (you manage the Secret):
+```yaml
+elasticsearch:
+  url: http://elasticsearch:9200
+  secretRef: my-existing-secret   # must contain ELASTICSEARCH_PASSWORD
+```
+
+## Useful Commands
 
 ```bash
-# Mot de passe Elasticsearch
-kubectl create secret generic elasticsearch-credentials \
-  --from-literal=password="your-elasticsearch-password"
+# Check deployment status
+helm status kube-seer -n monitoring
+kubectl get pods -n monitoring -l app.kubernetes.io/name=kube-seer
 
-# Webhook Slack (optionnel)
-kubectl patch secret my-sre-agent-kube-seer-secrets \
-  -p='{"data":{"SLACK_WEBHOOK":"'$(echo -n "https://hooks.slack.com/your/webhook" | base64)'"}}'
+# View logs
+kubectl logs -f deployment/kube-seer -n monitoring
+
+# Access the API locally
+kubectl port-forward svc/kube-seer 8080:8080 -n monitoring
+curl http://localhost:8080/health
+
+# Upgrade
+helm upgrade kube-seer ./helm/kube-seer -n monitoring --reuse-values
+
+# Uninstall
+helm uninstall kube-seer -n monitoring
 ```
 
-### Monitoring
+## API Endpoints
 
-Pour activer le monitoring Prometheus :
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Agent health |
+| `GET /ready` | Readiness (checks ES, Prometheus) |
+| `GET /status` | Full system status |
+| `GET /anomalies` | Detected anomalies |
+| `GET /incidents` | Correlated incidents |
+| `GET /predictions` | Resource saturation predictions |
+| `POST /analyze` | Trigger a manual analysis cycle |
 
-```yaml
-monitoring:
-  enabled: true
-  serviceMonitor:
-    enabled: true  # Nécessite Prometheus Operator
-  prometheusRule:
-    enabled: true  # Crée des règles d'alerte
-```
+## License
 
-### Persistence
-
-L'agent peut persister ses modèles ML :
-
-```yaml
-persistence:
-  enabled: true
-  size: 5Gi
-  storageClass: "fast-ssd"
-```
-
-### Autoscaling
-
-Pour l'autoscaling automatique :
-
-```yaml
-autoscaling:
-  enabled: true
-  minReplicas: 1
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 70
-```
-
-## Commandes utiles
-
-```bash
-# Voir le status
-helm status my-sre-agent
-
-# Mettre à jour
-helm upgrade my-sre-agent ./helm/kube-seer/ -f values-custom.yaml
-
-# Désinstaller
-helm uninstall my-sre-agent
-
-# Voir les logs
-kubectl logs -f deployment/my-sre-agent-kube-seer
-
-# Port-forward pour accéder à l'API
-kubectl port-forward svc/my-sre-agent-kube-seer 8080:8080
-```
-
-## API
-
-Une fois déployé, l'agent expose une API REST sur le port 8080 :
-
-- `GET /health` - Status de l'agent
-- `GET /metrics` - Métriques Prometheus
-- `POST /analyze/metrics` - Déclencher une analyse de métriques
-- `POST /analyze/logs` - Déclencher une analyse de logs
-- `GET /alerts` - Liste des alertes actives
-
-## Troubleshooting
-
-### L'agent ne se connecte pas à Elasticsearch
-
-1. Vérifiez l'URL Elasticsearch :
-   ```bash
-   kubectl exec deployment/my-sre-agent-kube-seer -- curl -I http://elasticsearch:9200
-   ```
-
-2. Vérifiez les credentials :
-   ```bash
-   kubectl get secret elasticsearch-credentials -o yaml
-   ```
-
-### Les modèles ML ne se sauvegardent pas
-
-Vérifiez que la PVC est bien montée :
-```bash
-kubectl describe pod -l app.kubernetes.io/name=kube-seer
-```
-
-### Pas d'alertes reçues
-
-1. Vérifiez la configuration des webhooks
-2. Consultez les logs pour les erreurs d'envoi
-3. Testez manuellement l'endpoint d'alerte
-
-## Values.yaml complet
-
-Voir le fichier [values.yaml](values.yaml) pour toutes les options de configuration disponibles.
-
-## Licence
-
-Ce chart Helm est distribué sous licence **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International**.
-
-- ✅ **Usage personnel et éducatif** autorisé
-- ❌ **Usage commercial** nécessite une licence commerciale
-- 📞 **Contact** l'auteur pour un usage commercial
-
-Voir [LICENSE](../../LICENSE) pour les détails complets.
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0](../../LICENSE) — free for personal and educational use, commercial use requires authorization.
