@@ -12,6 +12,33 @@ from src.models import KubernetesEvent, ResourceState
 logger = structlog.get_logger()
 
 
+def _parse_cpu_millicores(cpu_str: str) -> int:
+    """Parse Kubernetes CPU quantity string to millicores."""
+    cpu_str = cpu_str.strip()
+    if cpu_str.endswith("m"):
+        return int(cpu_str[:-1])
+    return int(float(cpu_str) * 1000)
+
+
+def _parse_memory_bytes(mem_str: str) -> int:
+    """Parse Kubernetes memory quantity string to bytes."""
+    mem_str = mem_str.strip()
+    suffixes = [
+        ("Ki", 1024),
+        ("Mi", 1024**2),
+        ("Gi", 1024**3),
+        ("Ti", 1024**4),
+        ("K", 1000),
+        ("M", 1000**2),
+        ("G", 1000**3),
+        ("T", 1000**4),
+    ]
+    for suffix, multiplier in suffixes:
+        if mem_str.endswith(suffix):
+            return int(mem_str[: -len(suffix)]) * multiplier
+    return int(mem_str)
+
+
 class KubernetesApiCollector(StateCollector):
     def __init__(self, config_obj: Config):
         self._config = config_obj
@@ -42,6 +69,40 @@ class KubernetesApiCollector(StateCollector):
             return True
         except Exception:
             return False
+
+    async def collect_pod_limits(
+        self,
+    ) -> dict:
+        """Return {(namespace, pod_name): (cpu_limit_m, memory_limit_bytes)} for running pods."""
+        if not self._core_api:
+            return {}
+        try:
+            result = await asyncio.to_thread(
+                self._core_api.list_pod_for_all_namespaces,
+                field_selector="status.phase=Running",
+            )
+        except Exception as e:
+            logger.error("k8s_api_collector.pod_limits_error", error=str(e))
+            return {}
+
+        limits: dict = {}
+        for pod in result.items:
+            ns = pod.metadata.namespace
+            name = pod.metadata.name
+            total_cpu: Optional[int] = None
+            total_mem: Optional[int] = None
+            for container in pod.spec.containers:
+                container_limits = container.resources.limits
+                if not container_limits:
+                    continue
+                if "cpu" in container_limits:
+                    parsed = _parse_cpu_millicores(container_limits["cpu"])
+                    total_cpu = (total_cpu or 0) + parsed
+                if "memory" in container_limits:
+                    parsed = _parse_memory_bytes(container_limits["memory"])
+                    total_mem = (total_mem or 0) + parsed
+            limits[(ns, name)] = (total_cpu, total_mem)
+        return limits
 
     async def collect_events(self, namespace: str = "") -> List[KubernetesEvent]:
         if not self._core_api:
