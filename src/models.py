@@ -34,6 +34,8 @@ class PodMetrics(BaseModel):
     memory_usage_bytes: int
     restart_count: int
     status: str
+    cpu_limit_millicores: Optional[int] = None
+    memory_limit_bytes: Optional[int] = None
     timestamp: datetime
 
 

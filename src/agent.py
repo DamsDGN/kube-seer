@@ -97,6 +97,25 @@ class SREAgent:
             except Exception as e:
                 logger.error("agent.k8s_api_error", error=str(e))
 
+        if self._k8s_api:
+            try:
+                pod_limits = await self._k8s_api.collect_pod_limits()
+                pod_metrics = [
+                    pod.model_copy(
+                        update={
+                            "cpu_limit_millicores": pod_limits.get(
+                                (pod.namespace, pod.pod_name), (None, None)
+                            )[0],
+                            "memory_limit_bytes": pod_limits.get(
+                                (pod.namespace, pod.pod_name), (None, None)
+                            )[1],
+                        }
+                    )
+                    for pod in pod_metrics
+                ]
+            except Exception as e:
+                logger.error("agent.pod_limits_error", error=str(e))
+
         logger.info(
             "agent.collected",
             nodes=len(node_metrics),
@@ -185,10 +204,11 @@ class SREAgent:
             incidents = []
 
         try:
-            predictions = await self._predictor.predict(
+            predictions, policy_anomalies = await self._predictor.predict(
                 node_metrics=data.node_metrics,
                 pod_metrics=data.pod_metrics,
             )
+            anomalies.extend(policy_anomalies)
         except Exception as e:
             logger.error("agent.prediction_error", error=str(e))
             predictions = []
