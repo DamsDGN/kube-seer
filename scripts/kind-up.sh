@@ -180,6 +180,7 @@ install_prometheus() {
         --set alertmanager.alertmanagerSpec.resources.requests.cpu=50m \
         --set alertmanager.alertmanagerSpec.resources.requests.memory=64Mi \
         --set "alertmanager.alertmanagerSpec.resources.limits.memory=128Mi" \
+        --set "alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy.type=None" \
         --wait \
         --timeout 300s
 
