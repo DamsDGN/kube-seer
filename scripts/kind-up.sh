@@ -186,6 +186,40 @@ install_prometheus() {
 }
 
 # ------------------------------------------------------------
+install_fluent_bit() {
+    log_section "Fluent Bit (log shipper → sre-logs)"
+
+    local es_password
+    es_password=$(kubectl get secret elasticsearch-es-elastic-user \
+        -n "${NAMESPACE_ELASTIC}" \
+        -o jsonpath='{.data.elastic}' | base64 -d)
+
+    helm repo add fluent https://fluent.github.io/helm-charts --force-update
+
+    helm upgrade --install fluent-bit fluent/fluent-bit \
+        --namespace "${NAMESPACE_MONITORING}" \
+        --create-namespace \
+        --set resources.requests.cpu=50m \
+        --set resources.requests.memory=64Mi \
+        --set resources.limits.memory=128Mi \
+        --set config.outputs="[OUTPUT]
+    Name            es
+    Match           kube.*
+    Host            elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc
+    Port            9200
+    HTTP_User       elastic
+    HTTP_Passwd     ${es_password}
+    Index           sre-logs
+    Suppress_Type_Name On
+    tls             On
+    tls.verify      Off" \
+        --wait \
+        --timeout 120s
+
+    log_info "Fluent Bit prêt — logs K8s → sre-logs"
+}
+
+# ------------------------------------------------------------
 deploy_kube_seer() {
     log_section "kube-seer"
 
@@ -249,6 +283,7 @@ main() {
     install_eck
     install_elasticsearch
     install_prometheus
+    install_fluent_bit
     deploy_kube_seer
     print_summary
 }
