@@ -1,9 +1,9 @@
-.PHONY: help install build deploy test clean
+.PHONY: help install build deploy test clean kind-up kind-down kind-reload
 
 # Variables
 PYTHON := python3
 VENV := .venv
-CLUSTER_NAME := efk-sre-agent
+CLUSTER_NAME := kube-seer
 ACTIVATE := source $(VENV)/bin/activate &&
 
 help: ## Affiche cette aide
@@ -66,6 +66,21 @@ deploy-helm: ## Déploie l'agent avec Helm (recommandé)
 		--timeout 10m
 	@echo "✅ Agent déployé avec succès!"
 	@echo "💡 Accès à l'API: kubectl port-forward -n monitoring svc/efk-sre-agent-efk-sre-agent 8080:8080"
+
+kind-up: ## Lance l'environnement Kind complet (cluster + ES + Prometheus + kube-seer)
+	@chmod +x scripts/kind-up.sh
+	./scripts/kind-up.sh
+
+kind-down: ## Supprime le cluster Kind
+	@chmod +x scripts/kind-down.sh
+	./scripts/kind-down.sh
+
+kind-reload: ## Rebuild et recharge kube-seer dans Kind sans recréer le cluster
+	@echo "Rebuild et rechargement de kube-seer..."
+	docker build -t kube-seer:local . --quiet
+	kind load docker-image kube-seer:local --name kube-seer
+	kubectl rollout restart deployment/kube-seer -n monitoring
+	kubectl rollout status deployment/kube-seer -n monitoring
 
 deploy-helm-dev: ## Déploie l'agent avec Helm en mode dev
 	@echo "🚀 Déploiement avec Helm (mode développement)..."
