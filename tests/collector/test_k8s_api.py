@@ -119,3 +119,84 @@ class TestKubernetesApiHealthy:
     @pytest.mark.asyncio
     async def test_is_healthy_false(self, collector):
         assert await collector.is_healthy() is False
+
+
+def _make_pod(name, namespace, cpu_limit=None, memory_limit=None):
+    pod = MagicMock()
+    pod.metadata.name = name
+    pod.metadata.namespace = namespace
+    container = MagicMock()
+    if cpu_limit or memory_limit:
+        container.resources.limits = {}
+        if cpu_limit:
+            container.resources.limits["cpu"] = cpu_limit
+        if memory_limit:
+            container.resources.limits["memory"] = memory_limit
+    else:
+        container.resources.limits = None
+    pod.spec.containers = [container]
+    return pod
+
+
+class TestCollectPodLimits:
+    @pytest.mark.asyncio
+    async def test_pod_with_both_limits(self, collector):
+        pod = _make_pod("web-0", "default", cpu_limit="500m", memory_limit="256Mi")
+        collector._core_api = MagicMock()
+        collector._core_api.list_pod_for_all_namespaces.return_value = MagicMock(
+            items=[pod]
+        )
+        result = await collector.collect_pod_limits()
+        assert ("default", "web-0") in result
+        cpu_limit, mem_limit = result[("default", "web-0")]
+        assert cpu_limit == 500
+        assert mem_limit == 268435456
+
+    @pytest.mark.asyncio
+    async def test_pod_without_limits(self, collector):
+        pod = _make_pod("web-0", "default")
+        collector._core_api = MagicMock()
+        collector._core_api.list_pod_for_all_namespaces.return_value = MagicMock(
+            items=[pod]
+        )
+        result = await collector.collect_pod_limits()
+        cpu_limit, mem_limit = result.get(("default", "web-0"), (None, None))
+        assert cpu_limit is None
+        assert mem_limit is None
+
+    @pytest.mark.asyncio
+    async def test_cpu_whole_number(self, collector):
+        pod = _make_pod("db-0", "data", cpu_limit="2", memory_limit="1Gi")
+        collector._core_api = MagicMock()
+        collector._core_api.list_pod_for_all_namespaces.return_value = MagicMock(
+            items=[pod]
+        )
+        result = await collector.collect_pod_limits()
+        cpu_limit, mem_limit = result[("data", "db-0")]
+        assert cpu_limit == 2000
+        assert mem_limit == 1073741824
+
+    @pytest.mark.asyncio
+    async def test_multiple_containers_summed(self, collector):
+        pod = MagicMock()
+        pod.metadata.name = "multi"
+        pod.metadata.namespace = "default"
+        c1 = MagicMock()
+        c1.resources.limits = {"cpu": "500m", "memory": "256Mi"}
+        c2 = MagicMock()
+        c2.resources.limits = {"cpu": "500m", "memory": "256Mi"}
+        pod.spec.containers = [c1, c2]
+        collector._core_api = MagicMock()
+        collector._core_api.list_pod_for_all_namespaces.return_value = MagicMock(
+            items=[pod]
+        )
+        result = await collector.collect_pod_limits()
+        cpu_limit, mem_limit = result[("default", "multi")]
+        assert cpu_limit == 1000
+        assert mem_limit == 536870912
+
+    @pytest.mark.asyncio
+    async def test_no_core_api(self, collector):
+        collector._core_api = None
+        result = await collector.collect_pod_limits()
+        assert result == {}
