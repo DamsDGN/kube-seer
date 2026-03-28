@@ -54,7 +54,7 @@ spec:
         {{ "{{" }} if eq .Status "firing" {{ "}}" }}{{ "{{" }} if eq .CommonLabels.severity "critical" {{ "}}" }}:red_circle:{{ "{{" }} else {{ "}}" }}:warning:{{ "{{" }} end {{ "}}" }}{{ "{{" }} else {{ "}}" }}:white_check_mark:{{ "{{" }} end {{ "}}" }} *{{ "{{" }} .CommonLabels.alertname {{ "}}" }}*{{ "{{" }} if gt (len .Alerts.Firing) 1 {{ "}}" }} ({{ "{{" }} .Alerts.Firing | len {{ "}}" }}){{ "{{" }} end {{ "}}" }}
       text: |-
         {{ "{{" }} range .Alerts {{ "}}" }}
-        *Resource:* `{{ "{{" }} if .Labels.namespace {{ "}}" }}{{ "{{" }} .Labels.namespace {{ "}}" }}/{{ "{{" }} end {{ "}}" }}{{ "{{" }} .Labels.resource_name {{ "}}" }}`
+        *Resource ({{ "{{" }} .Labels.resource_type {{ "}}" }}):* `{{ "{{" }} if .Labels.namespace {{ "}}" }}{{ "{{" }} .Labels.namespace {{ "}}" }}/{{ "{{" }} end {{ "}}" }}{{ "{{" }} .Labels.resource_name {{ "}}" }}`
         *Severity:* {{ "{{" }} if eq .Labels.severity "critical" {{ "}}" }}:red_circle: critical{{ "{{" }} else if eq .Labels.severity "warning" {{ "}}" }}:warning: warning{{ "{{" }} else {{ "}}" }}:information_source: info{{ "{{" }} end {{ "}}" }} | *Source:* {{ "{{" }} .Labels.source {{ "}}" }}
         *Description:* {{ "{{" }} .Annotations.description {{ "}}" }}
         {{ "{{" }} end {{ "}}" }}
