@@ -11,7 +11,6 @@ from src.models import NodeMetrics, PodMetrics, Prediction
 
 logger = structlog.get_logger()
 
-PREDICTION_HORIZON_HOURS = 168  # 7 days
 MIN_SAMPLES_FOR_PREDICTION = 5
 
 
@@ -37,22 +36,16 @@ class Predictor:
         for pod in pod_metrics:
             key = f"{pod.namespace}/pod/{pod.pod_name}"
             ts_h = pod.timestamp.timestamp() / 3600.0
-            self._append(
-                key,
-                "cpu_millicores",
-                ts_h,
-                float(pod.cpu_usage_millicores),
-            )
-            self._append(
-                key,
-                "memory_bytes",
-                ts_h,
-                float(pod.memory_usage_bytes),
-            )
+            if pod.cpu_limit_millicores:
+                cpu_pct = pod.cpu_usage_millicores / pod.cpu_limit_millicores * 100.0
+                self._append(key, "cpu_pct", ts_h, cpu_pct)
+            if pod.memory_limit_bytes:
+                mem_pct = pod.memory_usage_bytes / pod.memory_limit_bytes * 100.0
+                self._append(key, "memory_pct", ts_h, mem_pct)
 
     async def predict(
         self, node_metrics: List[NodeMetrics], pod_metrics: List[PodMetrics]
-    ) -> List[Prediction]:
+    ) -> tuple:
         predictions: List[Prediction] = []
 
         thresholds = {
@@ -78,7 +71,7 @@ class Predictor:
                 if pred:
                     predictions.append(pred)
 
-        return predictions
+        return predictions, []
 
     def _append(self, key: str, metric: str, ts_h: float, value: float) -> None:
         buf = self._history[key][metric]
@@ -124,7 +117,10 @@ class Predictor:
         threshold_t = (threshold - intercept) / slope
         hours_to_threshold = threshold_t - current_t
 
-        if hours_to_threshold <= 0 or hours_to_threshold > PREDICTION_HORIZON_HOURS:
+        if (
+            hours_to_threshold <= 0
+            or hours_to_threshold > self._config.prediction_horizon_hours
+        ):
             return None
 
         predicted_value = min(
