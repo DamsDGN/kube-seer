@@ -231,7 +231,12 @@ class MetricsAnalyzer(BaseAnalyzer):
                         resource_type="node",
                         resource_name=node.node_name,
                         namespace="",
-                        description=f"ML anomaly detected on node {node.node_name}",
+                        description=(
+                            f"Abnormal resource usage on node {node.node_name}: "
+                            f"CPU {node.cpu_usage_percent:.1f}%, "
+                            f"memory {node.memory_usage_percent:.1f}%, "
+                            f"disk {node.disk_usage_percent:.1f}%"
+                        ),
                         score=max(0.0, min(1.0, -scores[i])),
                         details={
                             "cpu": node.cpu_usage_percent,
@@ -261,7 +266,12 @@ class MetricsAnalyzer(BaseAnalyzer):
                         resource_type="pod",
                         resource_name=pod.pod_name,
                         namespace=pod.namespace,
-                        description=f"ML anomaly detected on pod {pod.pod_name}",
+                        description=(
+                            f"Abnormal resource usage on pod {pod.pod_name}: "
+                            f"CPU {pod.cpu_usage_millicores}m, "
+                            f"memory {pod.memory_usage_bytes // (1024 * 1024)}Mi, "
+                            f"restarts {pod.restart_count}"
+                        ),
                         score=max(0.0, min(1.0, -scores[i])),
                         details={
                             "cpu_millicores": pod.cpu_usage_millicores,
