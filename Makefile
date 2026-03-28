@@ -1,4 +1,4 @@
-.PHONY: help setup-dev test test-cov lint format type-check \
+.PHONY: help setup-dev test test-cov test-integration lint format type-check \
         kind-up kind-down kind-reload \
         helm-lint helm-template port-forward check-security
 
@@ -19,10 +19,13 @@ setup-dev: ## Create venv and install all dependencies
 	@echo "Done. Activate with: source $(VENV)/bin/activate"
 
 test: ## Run unit tests
-	$(VENV)/bin/pytest tests/ -v
+	$(VENV)/bin/pytest tests/ -v --ignore=tests/integration
 
 test-cov: ## Run unit tests with coverage report
-	$(VENV)/bin/pytest tests/ --cov=src --cov-report=html --cov-report=term
+	$(VENV)/bin/pytest tests/ --ignore=tests/integration --cov=src --cov-report=html --cov-report=term
+
+test-integration: ## Run integration tests (requires: make kind-up)
+	$(VENV)/bin/pytest tests/integration/ -v -m integration
 
 lint: ## Check code with flake8
 	$(VENV)/bin/flake8 src/ tests/ --max-line-length=100 --extend-ignore=E203,W503
