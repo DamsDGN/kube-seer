@@ -37,7 +37,7 @@ spec:
             {{- if .Values.elasticsearch.secretRef }}
             - secretRef:
                 name: {{ .Values.elasticsearch.secretRef }}
-            {{- else }}
+            {{- else if or .Values.elasticsearch.password .Values.intelligence.apiKey }}
             - secretRef:
                 name: {{ include "kube-seer.fullname" . }}
             {{- end }}
