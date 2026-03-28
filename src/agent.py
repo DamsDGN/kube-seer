@@ -20,6 +20,11 @@ from src.storage.elasticsearch import ElasticsearchStorage
 logger = structlog.get_logger()
 
 
+def _dated_index(base: str) -> str:
+    """Append today's UTC date to an index name: 'sre-metrics' → 'sre-metrics-2026.03.28'."""
+    return f"{base}-{datetime.now(timezone.utc).strftime('%Y.%m.%d')}"
+
+
 class SREAgent:
     def __init__(self, config: Config):
         self._config = config
@@ -52,6 +57,12 @@ class SREAgent:
     async def initialize(self) -> None:
         logger.info("agent.initializing")
         await self._storage.connect()
+        await self._storage.ensure_indices(
+            [
+                _dated_index(self._config.elasticsearch_indices_metrics),
+                _dated_index(self._config.elasticsearch_indices_anomalies),
+            ]
+        )
         if self._prometheus:
             await self._prometheus.connect()
         if self._metrics_server:
@@ -132,7 +143,7 @@ class SREAgent:
         )
 
     async def store(self, data: CollectedData) -> None:
-        metrics_index = self._config.elasticsearch_indices_metrics
+        metrics_index = _dated_index(self._config.elasticsearch_indices_metrics)
 
         records = []
         for node in data.node_metrics:
@@ -229,7 +240,7 @@ class SREAgent:
     async def store_anomalies(self, result: AnalysisResult) -> None:
         if not result.anomalies:
             return
-        index = self._config.elasticsearch_indices_anomalies
+        index = _dated_index(self._config.elasticsearch_indices_anomalies)
         records = [
             StoredRecord(
                 record_type="anomaly",
