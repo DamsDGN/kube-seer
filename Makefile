@@ -1,278 +1,71 @@
-.PHONY: help install build deploy test clean kind-up kind-down kind-reload
+.PHONY: help setup-dev test test-cov lint format type-check \
+        kind-up kind-down kind-reload \
+        helm-lint helm-template port-forward check-security
 
-# Variables
-PYTHON := python3
 VENV := .venv
 CLUSTER_NAME := kube-seer
-ACTIVATE := source $(VENV)/bin/activate &&
 
-help: ## Affiche cette aide
-	@echo "🤖 Agent IA SRE EFK - Commandes disponibles:"
-	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
-	@echo ""
-	@echo "🚀 Démarrage rapide avec pipx:"
-	@echo "  make setup && make activate && make deploy"
+help: ## Show available commands
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Configuration complète avec pipx et venv
-	./setup.sh install
+# ── Development ──────────────────────────────────────────────────────────────
 
-setup-tools: ## Installe uniquement les outils pipx
-	./setup.sh tools
-
-activate: ## Instructions pour activer l'environnement
-	@echo "💡 Pour activer l'environnement de développement:"
-	@echo "  source activate.sh"
-	@echo ""
-	@echo "💡 Ou manuellement:"
-	@echo "  source $(VENV)/bin/activate"
-
-install: ## Installe les dépendances dans le venv (legacy)
-	@if [ ! -d "$(VENV)" ]; then \
-		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \
-		exit 1; \
-	fi
-	$(ACTIVATE) pip install --upgrade pip
-	$(ACTIVATE) pip install -r requirements.txt
-
-install-dev: ## Installe les dépendances de développement
+setup-dev: ## Create venv and install all dependencies
+	python3 -m venv $(VENV)
+	$(VENV)/bin/pip install --upgrade pip
 	$(VENV)/bin/pip install -r requirements.txt
-	$(VENV)/bin/pip install pytest-xdist ipython jupyter
+	$(VENV)/bin/pip install pytest-xdist ipython
+	@echo "Done. Activate with: source $(VENV)/bin/activate"
 
-check-kind: ## Vérifie que Kind est installé
-	@which kind > /dev/null || (echo "❌ Kind n'est pas installé. Voir QUICKSTART.md" && exit 1)
-	@echo "✅ Kind est installé"
+test: ## Run unit tests
+	$(VENV)/bin/pytest tests/ -v
 
-setup-kind: check-kind ## Configure uniquement le cluster Kind
-	./deploy.sh setup-kind
+test-cov: ## Run unit tests with coverage report
+	$(VENV)/bin/pytest tests/ --cov=src --cov-report=html --cov-report=term
 
-build: ## Build l'image Docker
-	./deploy.sh build
+lint: ## Check code with flake8
+	$(VENV)/bin/flake8 src/ tests/ --max-line-length=100 --extend-ignore=E203,W503
 
-deploy: ## Déploie l'agent complet (cluster + app)
-	./deploy.sh deploy
+format: ## Format code with black
+	$(VENV)/bin/black src/ tests/
 
-deploy-helm: ## Déploie l'agent avec Helm (recommandé)
-	@echo "🚀 Déploiement avec Helm..."
-	@if ! command -v helm >/dev/null 2>&1; then \
-		echo "❌ Helm n'est pas installé. Voir https://helm.sh/docs/intro/install/"; \
-		exit 1; \
-	fi
-	@echo "📦 Installation de l'agent SRE avec Helm..."
-	helm upgrade --install efk-sre-agent ./helm/efk-sre-agent/ \
-		--create-namespace \
-		--namespace monitoring \
-		--wait \
-		--timeout 10m
-	@echo "✅ Agent déployé avec succès!"
-	@echo "💡 Accès à l'API: kubectl port-forward -n monitoring svc/efk-sre-agent-efk-sre-agent 8080:8080"
+type-check: ## Type-check with mypy
+	$(VENV)/bin/mypy src/ --ignore-missing-imports
 
-kind-up: ## Lance l'environnement Kind complet (cluster + ES + Prometheus + kube-seer)
+# ── Kind local environment ────────────────────────────────────────────────────
+
+kind-up: ## Spin up full Kind environment (cluster + ES + Prometheus + kube-seer)
 	@chmod +x scripts/kind-up.sh
 	./scripts/kind-up.sh
 
-kind-down: ## Supprime le cluster Kind
+kind-down: ## Delete the Kind cluster
 	@chmod +x scripts/kind-down.sh
 	./scripts/kind-down.sh
 
-kind-reload: ## Rebuild et recharge kube-seer dans Kind sans recréer le cluster
-	@echo "Rebuild et rechargement de kube-seer..."
+kind-reload: ## Rebuild and reload kube-seer in Kind without recreating the cluster
 	docker build -t kube-seer:local . --quiet
-	kind load docker-image kube-seer:local --name kube-seer
+	kind load docker-image kube-seer:local --name $(CLUSTER_NAME)
 	kubectl rollout restart deployment/kube-seer -n monitoring
 	kubectl rollout status deployment/kube-seer -n monitoring
 
-deploy-helm-dev: ## Déploie l'agent avec Helm en mode dev
-	@echo "🚀 Déploiement avec Helm (mode développement)..."
-	helm upgrade --install efk-sre-agent-dev ./helm/efk-sre-agent/ \
-		--create-namespace \
+# ── Helm ─────────────────────────────────────────────────────────────────────
+
+helm-lint: ## Validate the Helm chart
+	helm lint ./helm/kube-seer/
+
+helm-template: ## Render Helm chart templates (dry-run)
+	helm template kube-seer ./helm/kube-seer/ \
 		--namespace monitoring \
-		--values ./helm/efk-sre-agent/examples/values-dev.yaml \
-		--wait \
-		--timeout 5m
-	@echo "✅ Agent dev déployé!"
+		--set elasticsearch.url=http://elasticsearch:9200
 
-deploy-quick: ## Déploie l'agent rapidement (sans recréer le cluster)
-	./deploy.sh deploy-quick
+port-forward: ## Forward kube-seer API to localhost:8080
+	kubectl port-forward -n monitoring svc/kube-seer 8080:8080
 
-status: ## Affiche le statut du déploiement
-	./deploy.sh status
+# ── Security ──────────────────────────────────────────────────────────────────
 
-logs: ## Affiche les logs de l'agent
-	./deploy.sh logs
-
-test-api: ## Teste l'API de l'agent
-	./deploy.sh test
-
-test: ## Lance tous les tests (unitaires + quick)
-	@echo "🧪 Lancement de tous les tests..."
-	make test-quick
-	@echo "✅ Tests terminés!"
-
-test-unit: ## Lance les tests unitaires
-	@if [ ! -d "$(VENV)" ]; then \
-		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \
-		exit 1; \
-	fi
-	$(ACTIVATE) pytest tests/ -v
-
-test-unit-cov: ## Lance les tests avec couverture
-	@if [ ! -d "$(VENV)" ]; then \
-		echo "❌ Environnement virtuel non trouvé. Lancez: make setup"; \
-		exit 1; \
-	fi
-	$(ACTIVATE) pytest tests/ --cov=src --cov-report=html --cov-report=term
-
-test-quick: ## Tests rapides sans dépendances externes
-	./test.sh
-
-lint: ## Vérifie le code avec flake8 (via pipx)
-	@if command -v flake8 >/dev/null 2>&1; then \
-		flake8 src/ tests/ --max-line-length=100 --ignore=E203,W503; \
-	else \
-		echo "❌ flake8 non installé. Lancez: make setup-tools"; \
-	fi
-
-format: ## Formate le code avec black (via pipx)
-	@if command -v black >/dev/null 2>&1; then \
-		black src/ tests/; \
-	else \
-		echo "❌ black non installé. Lancez: make setup-tools"; \
-	fi
-
-type-check: ## Vérification de types avec mypy (via pipx)
-	@if command -v mypy >/dev/null 2>&1; then \
-		mypy src/ --ignore-missing-imports; \
-	else \
-		echo "❌ mypy non installé. Lancez: make setup-tools"; \
-	fi
-
-dev-env: ## Crée un environnement de développement complet
-	make setup
-	@echo ""
-	@echo "✅ Environnement prêt! Prochaines étapes:"
-	@echo "  1. source activate.sh    # Activer l'environnement"
-	@echo "  2. make deploy           # Déployer avec Kind"
-
-dev-check: ## Vérifie l'environnement de développement
-	@echo "🔍 Vérification de l'environnement de développement..."
-	@if [ -d "$(VENV)" ]; then \
-		echo "✅ Environnement virtuel trouvé"; \
-	else \
-		echo "❌ Environnement virtuel manquant"; \
-	fi
-	@command -v black >/dev/null 2>&1 && echo "✅ black (pipx)" || echo "❌ black manquant"
-	@command -v flake8 >/dev/null 2>&1 && echo "✅ flake8 (pipx)" || echo "❌ flake8 manquant"
-	@command -v mypy >/dev/null 2>&1 && echo "✅ mypy (pipx)" || echo "❌ mypy manquant"
-	@command -v pre-commit >/dev/null 2>&1 && echo "✅ pre-commit (pipx)" || echo "❌ pre-commit manquant"
-
-port-forward: ## Forward l'API sur localhost:8080
-	@echo "🌐 API accessible sur http://localhost:8080"
-	@echo "⏹️  Appuyer Ctrl+C pour arrêter"
-	kubectl port-forward -n monitoring svc/efk-sre-agent 8080:8080
-
-helm-lint: ## Valide le chart Helm
-	@if command -v helm >/dev/null 2>&1; then \
-		helm lint ./helm/efk-sre-agent/; \
-	else \
-		echo "❌ Helm non installé"; \
-	fi
-
-helm-template: ## Génère les manifests Helm (sans déployer)
-	@if command -v helm >/dev/null 2>&1; then \
-		helm template efk-sre-agent ./helm/efk-sre-agent/ \
-			--namespace monitoring \
-			--values ./helm/efk-sre-agent/examples/values-dev.yaml; \
-	else \
-		echo "❌ Helm non installé"; \
-	fi
-
-helm-package:
-	@echo "📦 Création du package Helm..."
-	helm package helm/efk-sre-agent --destination ./dist/
-
-helm-install-dev:
-	@echo "🚀 Installation Helm (développement)..."
-	./helm-deploy.sh install dev
-
-helm-install-prod:
-	@echo "🚀 Installation Helm (production)..."
-	./helm-deploy.sh install prod
-
-helm-upgrade-dev:
-	@echo "⬆️ Mise à jour Helm (développement)..."
-	./helm-deploy.sh upgrade dev
-
-helm-upgrade-prod:
-	@echo "⬆️ Mise à jour Helm (production)..."
-	./helm-deploy.sh upgrade prod
-
-helm-status:
-	@echo "📊 Statut du déploiement Helm..."
-	./helm-deploy.sh status
-
-helm-uninstall:
-	@echo "🗑️ Désinstallation Helm..."
-	./helm-deploy.sh uninstall
-
-helm-dry-run-dev:
-	@echo "🧪 Test Helm (développement)..."
-	helm install efk-sre-agent-test ./helm/efk-sre-agent \
-		--namespace monitoring \
-		--values ./helm/efk-sre-agent/examples/values-dev.yaml \
-		--dry-run --debug
-
-helm-dry-run-prod:
-	@echo "🧪 Test Helm (production)..."
-	helm install efk-sre-agent-test ./helm/efk-sre-agent \
-		--namespace monitoring \
-		--values ./helm/efk-sre-agent/examples/values-prod.yaml \
-		--dry-run --debug
-
-helm-docs: ## Génère la documentation Helm
-	@echo "📖 Documentation Helm disponible dans ./helm/efk-sre-agent/README.md"
-
-clean: ## Supprime l'application (garde le cluster)
-	./deploy.sh cleanup
-
-clean-helm: ## Désinstalle l'agent déployé avec Helm
-	@if helm list -n monitoring | grep -q efk-sre-agent; then \
-		helm uninstall efk-sre-agent -n monitoring; \
-		echo "✅ Agent Helm désinstallé"; \
-	else \
-		echo "ℹ️  Aucun déploiement Helm trouvé"; \
-	fi
-
-clean-all: ## Supprime tout (cluster inclus)
-	./deploy.sh cleanup-kind
-	docker rmi efk-sre-agent:latest 2>/dev/null || true
-
-check-security: ## Vérifie qu'aucun secret n'est commité
-	@echo "🔍 Vérification de sécurité..."
-	@git log --all --full-history -S "password" --oneline | head -5 | grep -v "changeme\|example\|fake" || echo "✅ Aucun mot de passe détecté"
-	@git log --all --full-history -S "token" --oneline | head -5 | grep -v "YOUR\|example\|fake" || echo "✅ Aucun token détecté"
-	@echo "✅ Vérification terminée"
-
-info: ## Affiche les informations du projet
-	@echo "📋 Informations du projet:"
-	@echo "  Nom: Agent IA SRE EFK"
-	@echo "  Cluster Kind: $(CLUSTER_NAME)"
-	@echo "  Python: $(shell python3 --version 2>/dev/null || echo 'Non installé')"
-	@echo "  Docker: $(shell docker --version 2>/dev/null || echo 'Non installé')"
-	@echo "  kubectl: $(shell kubectl version --client --short 2>/dev/null || echo 'Non installé')"
-	@echo "  Kind: $(shell kind version 2>/dev/null || echo 'Non installé')"
-	@echo ""
-	@echo "📁 Structure:"
-	@find . -maxdepth 2 -type f -name "*.py" -o -name "*.yaml" -o -name "*.md" | grep -v __pycache__ | sort
-
-demo: ## Lance une démo complète
-	@echo "🎬 Démo de l'agent SRE EFK avec pipx"
-	@echo "1️⃣  Configuration de l'environnement..."
-	make setup
-	@echo "2️⃣  Activation de l'environnement..."
-	@echo "💡 Activez manuellement: source activate.sh"
-	@echo "3️⃣  Tests rapides..."
-	./test.sh
-	@echo "4️⃣  Prêt pour le déploiement..."
-	@echo "💡 Lancez: make deploy (après activation)"
-	@echo "✅ Démo terminée!"
+check-security: ## Check that no secrets are committed
+	@git log --all --full-history -S "password" --oneline | \
+		grep -v "changeme\|example\|fake\|getenv" || echo "No passwords detected"
+	@git log --all --full-history -S "token" --oneline | \
+		grep -v "YOUR\|example\|fake" || echo "No tokens detected"
