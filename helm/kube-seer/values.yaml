@@ -65,6 +65,15 @@ alerter:
     webhook:
       enabled: false
       url: ""
+  # Slack notifications via AlertmanagerConfig (requires Prometheus Operator)
+  slack:
+    enabled: false
+    # Webhook URL — use webhookUrlSecretRef in production
+    webhookUrl: ""
+    # Reference to an existing Secret: { name: my-secret, key: webhookUrl }
+    webhookUrlSecretRef: {}
+    channel: "#alerts"
+    sendResolved: true
 
 # Image
 image:

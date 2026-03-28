@@ -1,0 +1,61 @@
+{{- if .Values.alerter.slack.enabled }}
+{{- if and (not .Values.alerter.slack.webhookUrl) (not .Values.alerter.slack.webhookUrlSecretRef) }}
+{{- fail "alerter.slack.enabled is true but neither webhookUrl nor webhookUrlSecretRef is set" }}
+{{- end }}
+{{- $secretName := printf "%s-alertmanager-slack" (include "kube-seer.fullname" .) }}
+---
+{{- if .Values.alerter.slack.webhookUrl }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-seer.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  webhookUrl: {{ .Values.alerter.slack.webhookUrl | quote }}
+---
+{{- end }}
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: {{ include "kube-seer.fullname" . }}-slack
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-seer.labels" . | nindent 4 }}
+spec:
+  route:
+    receiver: slack
+    matchers:
+    - name: agent
+      value: kube-seer
+      matchType: "="
+    groupBy:
+    - alertname
+    - resource_name
+    groupWait: 10s
+    groupInterval: 2m
+    repeatInterval: 1h
+  receivers:
+  - name: slack
+    slackConfigs:
+    - apiURL:
+        {{- if .Values.alerter.slack.webhookUrl }}
+        name: {{ $secretName }}
+        key: webhookUrl
+        {{- else }}
+        name: {{ .Values.alerter.slack.webhookUrlSecretRef.name }}
+        key: {{ .Values.alerter.slack.webhookUrlSecretRef.key }}
+        {{- end }}
+      channel: {{ .Values.alerter.slack.channel | quote }}
+      sendResolved: {{ .Values.alerter.slack.sendResolved | default true }}
+      title: |-
+        [{{ "{{" }} .Status | toUpper {{ "}}" }}{{ "{{" }} if eq .Status "firing" {{ "}}" }}:{{ "{{" }} .Alerts.Firing | len {{ "}}" }}{{ "{{" }} end {{ "}}" }}] {{ "{{" }} .CommonLabels.alertname {{ "}}" }}
+      text: |-
+        {{ "{{" }} range .Alerts {{ "}}" }}
+        *Severity:* {{ "{{" }} .Labels.severity {{ "}}" }}
+        *Resource:* {{ "{{" }} .Labels.resource_type {{ "}}" }}/{{ "{{" }} .Labels.resource_name {{ "}}" }}{{ "{{" }} if .Labels.namespace {{ "}}" }} ({{ "{{" }} .Labels.namespace {{ "}}" }}){{ "{{" }} end {{ "}}" }}
+        *Description:* {{ "{{" }} .Annotations.description {{ "}}" }}
+        {{ "{{" }} end {{ "}}" }}
+{{- end }}
