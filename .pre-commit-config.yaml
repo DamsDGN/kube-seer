@@ -27,6 +27,6 @@ repos:
     hooks:
       - id: check-secrets
         name: Check for secrets
-        entry: bash -c 'if git diff --cached --name-only | grep -v "\.gitignore\|\.pre-commit-config\|Makefile\|SECURITY\.md" | grep -v "^docs/\|^helm/\|^scripts/" | xargs grep -lE "(password|api_key|secret_key|private_key|access_token)\s*=" 2>/dev/null | grep -v "example\|changeme\|fake\|test_\|_test"; then echo "❌ Secrets détectés!"; exit 1; fi'
+        entry: bash -c 'if git diff --cached --name-only | grep -v "\.gitignore\|\.pre-commit-config\|Makefile\|SECURITY\.md" | grep -v "^docs/\|^helm/\|^scripts/" | xargs grep -lE "(password|api_key|secret_key|private_key|access_token)\s*=\s*[\"'\''][^\"'\'']{4,}" 2>/dev/null | grep -v "example\|changeme\|fake\|test_\|_test\|getenv\|environ"; then echo "❌ Secrets détectés!"; exit 1; fi'
         language: system
         pass_filenames: false

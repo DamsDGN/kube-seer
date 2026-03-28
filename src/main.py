@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import signal
 import os
 
@@ -22,7 +23,9 @@ def setup_logging(log_level: str) -> None:
                 else structlog.processors.JSONRenderer()
             ),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        wrapper_class=structlog.make_filtering_bound_logger(
+            logging.getLevelName(log_level)
+        ),
     )
 
 
@@ -34,6 +37,7 @@ async def main() -> None:
         elasticsearch_url=os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200"),
         elasticsearch_username=os.getenv("ELASTICSEARCH_USERNAME", ""),
         elasticsearch_password=os.getenv("ELASTICSEARCH_PASSWORD", ""),
+        elasticsearch_verify_certs=_bool("ELASTICSEARCH_VERIFY_CERTS", "true"),
         elasticsearch_indices_metrics=os.getenv(
             "ELASTICSEARCH_INDICES_METRICS", "sre-metrics"
         ),

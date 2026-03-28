@@ -7,6 +7,7 @@ class Config(BaseModel):
     elasticsearch_username: str = ""
     elasticsearch_password: str = ""
     elasticsearch_secret_ref: str = ""
+    elasticsearch_verify_certs: bool = True
     elasticsearch_indices_metrics: str = "sre-metrics"
     elasticsearch_indices_logs: str = "sre-logs"
     elasticsearch_indices_anomalies: str = "sre-anomalies"

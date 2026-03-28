@@ -84,27 +84,40 @@ k8s/                      # Kubernetes manifests (legacy)
 ```bash
 git clone https://github.com/DamsDGN/kube-seer.git
 cd kube-seer
-make setup-dev
-make test
-make run-dev
+make setup-dev          # create venv + install dependencies
+source .venv/bin/activate
+make test               # run 154 unit tests
+```
+
+### Local Kind environment (recommended for testing)
+
+```bash
+make kind-up            # spin up cluster + ES + Prometheus + kube-seer
+# kube-seer API  → http://localhost:8080
+# Prometheus     → http://localhost:9090
+# Grafana        → http://localhost:3000  (admin / prom-operator)
+# Alertmanager   → http://localhost:9093
+
+make kind-reload        # rebuild and redeploy kube-seer without recreating the cluster
+make kind-down          # delete the cluster
 ```
 
 ### Helm deployment
 
 ```bash
-# Development
-./helm-deploy.sh install dev
-
-# Production
-./helm-deploy.sh install prod
-```
-
-```bash
-# Manual installation
+# Minimal install (no authentication)
 kubectl create namespace monitoring
 helm install kube-seer ./helm/kube-seer \
   --namespace monitoring \
   --set elasticsearch.url=http://elasticsearch:9200
+
+# With authentication
+helm install kube-seer ./helm/kube-seer \
+  --namespace monitoring \
+  --set elasticsearch.url=https://elasticsearch:9200 \
+  --set elasticsearch.username=elastic \
+  --set elasticsearch.password=your-password \
+  --set elasticsearch.verifyTls=false   # for self-signed certificates
 ```
 
 ## REST API
