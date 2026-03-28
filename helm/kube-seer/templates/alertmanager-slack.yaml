@@ -51,11 +51,11 @@ spec:
       channel: {{ .Values.alerter.slack.channel | quote }}
       sendResolved: {{ .Values.alerter.slack.sendResolved | default true }}
       title: |-
-        [{{ "{{" }} .Status | toUpper {{ "}}" }}{{ "{{" }} if eq .Status "firing" {{ "}}" }}:{{ "{{" }} .Alerts.Firing | len {{ "}}" }}{{ "{{" }} end {{ "}}" }}] {{ "{{" }} .CommonLabels.alertname {{ "}}" }}
+        {{ "{{" }} if eq .Status "firing" {{ "}}" }}{{ "{{" }} if eq .CommonLabels.severity "critical" {{ "}}" }}:red_circle:{{ "{{" }} else {{ "}}" }}:warning:{{ "{{" }} end {{ "}}" }}{{ "{{" }} else {{ "}}" }}:white_check_mark:{{ "{{" }} end {{ "}}" }} *{{ "{{" }} .CommonLabels.alertname {{ "}}" }}*{{ "{{" }} if gt (len .Alerts.Firing) 1 {{ "}}" }} ({{ "{{" }} .Alerts.Firing | len {{ "}}" }}){{ "{{" }} end {{ "}}" }}
       text: |-
         {{ "{{" }} range .Alerts {{ "}}" }}
-        *Severity:* {{ "{{" }} .Labels.severity {{ "}}" }}
-        *Resource:* {{ "{{" }} .Labels.resource_type {{ "}}" }}/{{ "{{" }} .Labels.resource_name {{ "}}" }}{{ "{{" }} if .Labels.namespace {{ "}}" }} ({{ "{{" }} .Labels.namespace {{ "}}" }}){{ "{{" }} end {{ "}}" }}
+        *Resource:* `{{ "{{" }} if .Labels.namespace {{ "}}" }}{{ "{{" }} .Labels.namespace {{ "}}" }}/{{ "{{" }} end {{ "}}" }}{{ "{{" }} .Labels.resource_name {{ "}}" }}`
+        *Severity:* {{ "{{" }} if eq .Labels.severity "critical" {{ "}}" }}:red_circle: critical{{ "{{" }} else if eq .Labels.severity "warning" {{ "}}" }}:warning: warning{{ "{{" }} else {{ "}}" }}:information_source: info{{ "{{" }} end {{ "}}" }} | *Source:* {{ "{{" }} .Labels.source {{ "}}" }}{{ "{{" }} if .Annotations.score {{ "}}" }} | *Score:* {{ "{{" }} .Annotations.score {{ "}}" }}{{ "{{" }} end {{ "}}" }}
         *Description:* {{ "{{" }} .Annotations.description {{ "}}" }}
         {{ "{{" }} end {{ "}}" }}
 {{- end }}
