@@ -64,7 +64,17 @@ class ResourceStateAnalyzer(BaseAnalyzer):
         anomalies: List[Anomaly] = []
         for rs in resource_states:
             kind = rs.kind
-            if kind in ("Deployment", "StatefulSet", "DaemonSet"):
+            if kind == "Node":
+                anomalies.extend(self._check_node(rs))
+            elif kind == "Service":
+                anomalies.extend(self._check_service(rs))
+            elif kind == "PodDisruptionBudget":
+                anomalies.extend(self._check_pdb(rs))
+            elif kind == "PersistentVolume":
+                anomalies.extend(self._check_pv(rs))
+            elif kind == "Namespace":
+                anomalies.extend(self._check_namespace(rs))
+            elif kind in ("Deployment", "StatefulSet", "DaemonSet"):
                 anomalies.extend(self._check_replicas(rs))
             elif kind == "Job":
                 anomalies.extend(self._check_job(rs))
@@ -82,6 +92,101 @@ class ResourceStateAnalyzer(BaseAnalyzer):
         pass
 
     # ── Checks ────────────────────────────────────────────────────────────────
+
+    def _check_node(self, rs: ResourceState) -> List[Anomaly]:
+        anomalies = []
+        c = rs.conditions
+        if not c.get("ready", True):
+            anomalies.append(
+                self._anomaly(rs, Severity.CRITICAL, f"Node {rs.name} is NotReady")
+            )
+        if c.get("memory_pressure"):
+            anomalies.append(
+                self._anomaly(
+                    rs, Severity.CRITICAL, f"Node {rs.name} has MemoryPressure"
+                )
+            )
+        if c.get("disk_pressure"):
+            anomalies.append(
+                self._anomaly(rs, Severity.CRITICAL, f"Node {rs.name} has DiskPressure")
+            )
+        if c.get("pid_pressure"):
+            anomalies.append(
+                self._anomaly(rs, Severity.WARNING, f"Node {rs.name} has PIDPressure")
+            )
+        if c.get("unschedulable"):
+            anomalies.append(
+                self._anomaly(
+                    rs, Severity.WARNING, f"Node {rs.name} is unschedulable (cordoned)"
+                )
+            )
+        return anomalies
+
+    def _check_service(self, rs: ResourceState) -> List[Anomaly]:
+        if rs.conditions.get("ready_endpoints", -1) == 0:
+            return [
+                self._anomaly(
+                    rs,
+                    Severity.CRITICAL,
+                    f"Service {rs.namespace}/{rs.name} has a selector"
+                    " but 0 ready endpoints (silent outage)",
+                )
+            ]
+        return []
+
+    def _check_pdb(self, rs: ResourceState) -> List[Anomaly]:
+        current = rs.conditions.get("current_healthy", 0)
+        desired = rs.conditions.get("desired_healthy", 0)
+        if desired == 0:
+            return []
+        if current < desired:
+            allowed = rs.conditions.get("disruptions_allowed", 0)
+            return [
+                self._anomaly(
+                    rs,
+                    Severity.CRITICAL,
+                    f"PodDisruptionBudget {rs.namespace}/{rs.name} is violated:"
+                    f" {current}/{desired} healthy pods"
+                    f" (disruptions_allowed={allowed})",
+                )
+            ]
+        return []
+
+    def _check_pv(self, rs: ResourceState) -> List[Anomaly]:
+        phase = rs.conditions.get("phase", "Unknown")
+        if phase == "Failed":
+            claim = rs.conditions.get("claim_ref", "none")
+            return [
+                self._anomaly(
+                    rs,
+                    Severity.CRITICAL,
+                    f"PersistentVolume {rs.name} is in Failed phase (claim: {claim})",
+                )
+            ]
+        if phase == "Released":
+            capacity = rs.conditions.get("capacity", "?")
+            policy = rs.conditions.get("reclaim_policy", "?")
+            return [
+                self._anomaly(
+                    rs,
+                    Severity.WARNING,
+                    f"PersistentVolume {rs.name} is Released and not reclaimed"
+                    f" (capacity: {capacity}, policy: {policy})",
+                )
+            ]
+        return []
+
+    def _check_namespace(self, rs: ResourceState) -> List[Anomaly]:
+        if rs.conditions.get("phase") == "Terminating":
+            return [
+                self._anomaly(
+                    rs,
+                    Severity.CRITICAL,
+                    f"Namespace {rs.name} is stuck in Terminating phase"
+                    " (likely blocked by finalizers)",
+                )
+            ]
+        return []
 
     def _check_replicas(self, rs: ResourceState) -> List[Anomaly]:
         desired = rs.desired_replicas
