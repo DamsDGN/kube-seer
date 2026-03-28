@@ -3,18 +3,18 @@
 [![CI/CD Pipeline](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-Agent SRE intelligent pour Kubernetes — collecte des métriques, détecte les anomalies, corrèle les incidents et prédit les saturations de ressources avant qu'elles surviennent.
+Intelligent SRE agent for Kubernetes — collects metrics, detects anomalies, correlates incidents, and predicts resource saturation before it happens.
 
-## Fonctionnalités
+## Features
 
-- **Collecte multi-sources** : Prometheus, Kubernetes Metrics Server, K8s API (nodes, pods, events, PVC, HPA, NetworkPolicy, ResourceQuota, Ingress)
-- **Détection d'anomalies** : Analyse statistique (Z-score, IQR) sur CPU, mémoire, disque
-- **Corrélation d'incidents** : Regroupe les anomalies liées en incidents cohérents
-- **Prédiction de saturation** : Régression linéaire avec horizon configurable — prédit quand une ressource va atteindre son seuil critique
-- **Alertes pod sans memory limit** : Détecte les pods à risque OOM (pas de `resources.limits.memory`)
-- **Alerting multi-canal** : Webhook générique, Alertmanager, Slack, Email
-- **API REST** : Consultation des anomalies, incidents et prédictions en temps réel
-- **Stockage** : Persistance des données dans Elasticsearch
+- **Multi-source collection**: Prometheus, Kubernetes Metrics Server, K8s API (nodes, pods, events, PVC, HPA, NetworkPolicy, ResourceQuota, Ingress)
+- **Anomaly detection**: Statistical analysis (Z-score, IQR) on CPU, memory, disk
+- **Incident correlation**: Groups related anomalies into coherent incidents
+- **Saturation prediction**: Linear regression with configurable horizon — predicts when a resource will reach its critical threshold
+- **Pod without memory limit alerts**: Detects pods at OOM risk (no `resources.limits.memory`)
+- **Multi-channel alerting**: Generic webhook, Alertmanager, Slack, Email
+- **REST API**: Real-time access to anomalies, incidents, and predictions
+- **Storage**: Data persistence in Elasticsearch
 
 ## Architecture
 
@@ -38,48 +38,48 @@ Agent SRE intelligent pour Kubernetes — collecte des métriques, détecte les 
                                         /predictions
 ```
 
-## Structure du projet
+## Project structure
 
 ```
 src/
-├── agent.py              # Orchestrateur principal (cycle collect → analyze → alert)
-├── config.py             # Configuration via variables d'environnement
-├── models.py             # Modèles de données Pydantic (NodeMetrics, PodMetrics, Anomaly...)
-├── main.py               # Point d'entrée FastAPI
+├── agent.py              # Main orchestrator (collect → analyze → alert cycle)
+├── config.py             # Configuration via environment variables
+├── models.py             # Pydantic data models (NodeMetrics, PodMetrics, Anomaly...)
+├── main.py               # FastAPI entry point
 ├── analyzer/
-│   ├── metrics.py        # Détection d'anomalies (Z-score, IQR, seuils)
-│   ├── events.py         # Analyse des événements Kubernetes
-│   ├── logs.py           # Analyse des logs Elasticsearch
-│   ├── correlator.py     # Corrélation anomalies → incidents
-│   └── predictor.py      # Prédiction de saturation (régression linéaire)
+│   ├── metrics.py        # Anomaly detection (Z-score, IQR, thresholds)
+│   ├── events.py         # Kubernetes event analysis
+│   ├── logs.py           # Elasticsearch log analysis
+│   ├── correlator.py     # Anomaly → incident correlation
+│   └── predictor.py      # Saturation prediction (linear regression)
 ├── alerter/
-│   ├── webhook.py        # Webhook générique
+│   ├── webhook.py        # Generic webhook
 │   ├── alertmanager.py   # Prometheus Alertmanager
 │   ├── slack.py          # Slack
-│   └── email.py          # Email SMTP
+│   └── email.py          # SMTP Email
 ├── collector/
-│   ├── prometheus.py     # Métriques Prometheus
+│   ├── prometheus.py     # Prometheus metrics
 │   ├── metrics_server.py # Kubernetes Metrics Server
 │   └── k8s_api.py        # K8s API (events, states, pod limits, PVC, HPA...)
 ├── storage/
-│   └── elasticsearch.py  # Persistance Elasticsearch
+│   └── elasticsearch.py  # Elasticsearch persistence
 └── api/
-    └── routes.py         # Endpoints REST (FastAPI)
+    └── routes.py         # REST endpoints (FastAPI)
 
-tests/                    # 154 tests unitaires (pytest)
-helm/kube-seer/           # Chart Helm pour déploiement Kubernetes
-k8s/                      # Manifests Kubernetes (legacy)
+tests/                    # 154 unit tests (pytest)
+helm/kube-seer/           # Helm chart for Kubernetes deployment
+k8s/                      # Kubernetes manifests (legacy)
 ```
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
 - Python 3.11+
-- Docker et Docker Compose
-- Kubernetes + Helm 3.x (pour le déploiement)
+- Docker and Docker Compose
+- Kubernetes + Helm 3.x (for deployment)
 
-### Développement local
+### Local development
 
 ```bash
 git clone https://github.com/DamsDGN/kube-seer.git
@@ -89,10 +89,10 @@ make test
 make run-dev
 ```
 
-### Déploiement Helm
+### Helm deployment
 
 ```bash
-# Développement
+# Development
 ./helm-deploy.sh install dev
 
 # Production
@@ -100,45 +100,45 @@ make run-dev
 ```
 
 ```bash
-# Installation manuelle
+# Manual installation
 kubectl create namespace monitoring
 helm install kube-seer ./helm/kube-seer \
   --namespace monitoring \
   --set elasticsearch.url=http://elasticsearch:9200
 ```
 
-## API REST
+## REST API
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | Santé de l'agent |
-| `GET /ready` | Disponibilité (vérifie ES, Prometheus) |
-| `GET /status` | Statut complet du système |
-| `GET /config` | Configuration active (sans secrets) |
-| `GET /anomalies` | Anomalies détectées (filtrables par sévérité/namespace) |
-| `GET /incidents` | Incidents corrélés |
-| `GET /predictions` | Prédictions de saturation |
-| `GET /alerts/stats` | Statistiques des alertes |
-| `POST /analyze` | Déclencher une analyse manuelle |
+| `GET /health` | Agent health |
+| `GET /ready` | Readiness (checks ES, Prometheus) |
+| `GET /status` | Full system status |
+| `GET /config` | Active configuration (without secrets) |
+| `GET /anomalies` | Detected anomalies (filterable by severity/namespace) |
+| `GET /incidents` | Correlated incidents |
+| `GET /predictions` | Saturation predictions |
+| `GET /alerts/stats` | Alert statistics |
+| `POST /analyze` | Trigger a manual analysis |
 
 ## Configuration
 
-Les paramètres principaux sont configurables via variables d'environnement :
+The main parameters are configurable via environment variables:
 
 ```yaml
-# Connexions
+# Connections
 ELASTICSEARCH_URL: http://elasticsearch:9200
 PROMETHEUS_URL: http://prometheus:9090
 
-# Seuils d'alerte
+# Alert thresholds
 THRESHOLDS_CPU_WARNING: 70.0
 THRESHOLDS_CPU_CRITICAL: 85.0
 THRESHOLDS_MEMORY_WARNING: 70.0
 THRESHOLDS_MEMORY_CRITICAL: 85.0
 THRESHOLDS_DISK_CRITICAL: 90.0
 
-# Prédiction
-PREDICTION_HORIZON_HOURS: 168   # Horizon de prédiction (7 jours par défaut)
+# Prediction
+PREDICTION_HORIZON_HOURS: 168   # Prediction horizon (7 days by default)
 
 # ML
 ANOMALY_THRESHOLD: 0.05
@@ -152,39 +152,39 @@ SLACK_WEBHOOK: https://hooks.slack.com/services/...
 ## Tests
 
 ```bash
-# Tests unitaires (154 tests, Python 3.11/3.12/3.13)
+# Unit tests (154 tests, Python 3.11/3.12/3.13)
 pytest tests/ -v
 
-# Avec couverture
+# With coverage
 pytest tests/ --cov=src --cov-report=html
 ```
 
 ## CI/CD
 
-Pipeline GitHub Actions sur chaque push et PR :
+GitHub Actions pipeline on every push and PR:
 
 - Black + flake8 + mypy
-- 154 tests unitaires sur Python 3.11, 3.12, 3.13
-- Scan de sécurité Bandit
-- Validation du chart Helm
-- Build Docker multi-plateforme (AMD64/ARM64)
-- Push sur Docker Hub
-- Scan de vulnérabilités Trivy
+- 154 unit tests on Python 3.11, 3.12, 3.13
+- Bandit security scan
+- Helm chart validation
+- Multi-platform Docker build (AMD64/ARM64)
+- Push to Docker Hub
+- Trivy vulnerability scan
 
-Voir [docs/CI-CD.md](docs/CI-CD.md) pour les détails.
+See [docs/CI-CD.md](docs/CI-CD.md) for details.
 
-## Sécurité
+## Security
 
-- Utilisateur non-root dans le conteneur
-- RBAC Kubernetes avec permissions minimales
-- Secrets via variables d'environnement (jamais committés)
-- Scan de vulnérabilités automatisé (Trivy + Bandit)
+- Non-root user in the container
+- Kubernetes RBAC with minimal permissions
+- Secrets via environment variables (never committed)
+- Automated vulnerability scanning (Trivy + Bandit)
 
-## Licence
+## License
 
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0](LICENSE) — usage personnel et éducatif libre, usage commercial sur demande.
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0](LICENSE) — free for personal and educational use, commercial use upon request.
 
 ## Support
 
-- Issues : [GitHub Issues](https://github.com/DamsDGN/kube-seer/issues)
-- Discussions : [GitHub Discussions](https://github.com/DamsDGN/kube-seer/discussions)
+- Issues: [GitHub Issues](https://github.com/DamsDGN/kube-seer/issues)
+- Discussions: [GitHub Discussions](https://github.com/DamsDGN/kube-seer/discussions)
