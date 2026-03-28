@@ -1,151 +1,158 @@
-# 🔒 Guide de Sécurité
+# Security Guide
 
-## ⚠️ IMPORTANT : Informations Sensibles
+## ⚠️ IMPORTANT: Sensitive Information
 
-Ce projet est **PUBLIC** sur GitHub. Ne jamais committer :
+This project is **PUBLIC** on GitHub. Never commit:
 
-### ❌ À NE JAMAIS COMMITTER
+### ❌ Never Commit
 
-- Mots de passe Elasticsearch
-- Tokens d'API 
-- Webhooks Slack avec tokens
-- Credentials email
-- Certificats/clés privées
-- URLs internes avec credentials
-- Fichiers `.env` avec vraies valeurs
+- Elasticsearch passwords
+- API tokens
+- Slack webhooks with tokens
+- Email credentials
+- Certificates / private keys
+- Internal URLs with embedded credentials
+- `.env` files with real values
 
-### ✅ Protection en Place
+### ✅ Protections in Place
 
-Les fichiers suivants sont automatiquement ignorés :
+The following are automatically ignored by `.gitignore`:
 - `.env`
-- `.env.local` 
+- `.env.local`
 - `.env.production`
 - `k8s/secrets.yaml`
 - `k8s/local-*.yaml`
 - `*.key`, `*.pem`, `*.crt`
 - `secrets/`, `credentials/`
 
-## 🛡️ Bonnes Pratiques
+## Best Practices
 
-### 1. Variables d'Environnement
+### 1. Environment Variables
 
 ```bash
-# Utiliser des variables d'environnement pour les secrets
-export ELASTICSEARCH_PASSWORD="vraie-valeur-secrete"
+# Use environment variables for secrets
+export ELASTICSEARCH_PASSWORD="real-secret-value"
 export SLACK_WEBHOOK="https://hooks.slack.com/services/real/webhook/url"
 
-# Ou un fichier .env local (non commité)
+# Or a local .env file (not committed)
 cp .env.example .env
-# Éditer .env avec les vraies valeurs
+# Edit .env with real values
 ```
 
-### 2. Secrets Kubernetes
+### 2. Kubernetes Secrets
 
 ```bash
-# Créer des secrets depuis des fichiers
-kubectl create secret generic efk-sre-secrets \
+# Create secrets from a file
+kubectl create secret generic kube-seer-secrets \
   --from-env-file=.env \
   -n monitoring
 
-# Ou individuellement
-kubectl create secret generic efk-sre-secrets \
-  --from-literal=ELASTICSEARCH_PASSWORD="vraie-valeur" \
+# Or individually
+kubectl create secret generic kube-seer-secrets \
+  --from-literal=ELASTICSEARCH_PASSWORD="real-value" \
   -n monitoring
 ```
 
-### 3. Fichiers de Configuration
+### 3. Helm Chart — Inline or External Secret
 
 ```bash
-# Créer des configs locales (ignorées par git)
-cp k8s/deployment.yaml k8s/local-deployment.yaml
-# Modifier local-deployment.yaml avec des valeurs spécifiques
+# Inline password (creates a Secret in the chart)
+helm install kube-seer ./helm/kube-seer \
+  --set elasticsearch.url=http://elasticsearch:9200 \
+  --set elasticsearch.username=elastic \
+  --set elasticsearch.password=real-password
+
+# Reference an existing secret
+helm install kube-seer ./helm/kube-seer \
+  --set elasticsearch.url=http://elasticsearch:9200 \
+  --set elasticsearch.secretRef=my-existing-secret
 ```
 
-## 🔐 Gestion des Secrets en Production
+## Secret Management in Production
 
-### 1. Sealed Secrets (Recommandé)
+### 1. Sealed Secrets (Recommended)
 
 ```bash
-# Installation de Sealed Secrets
+# Install Sealed Secrets
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.24.0/controller.yaml
 
-# Créer un secret scellé
-echo -n "vraie-valeur" | kubectl create secret generic efk-sre-secrets \
+# Create a sealed secret
+echo -n "real-value" | kubectl create secret generic kube-seer-secrets \
   --from-file=ELASTICSEARCH_PASSWORD=/dev/stdin \
   --dry-run=client -o yaml | kubeseal -o yaml > k8s/sealed-secrets.yaml
 ```
 
 ### 2. External Secrets Operator
 
-```bash
-# Avec HashiCorp Vault, AWS Secrets Manager, etc.
+```yaml
+# With HashiCorp Vault, AWS Secrets Manager, etc.
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: efk-sre-secrets
+  name: kube-seer-secrets
 spec:
   secretStoreRef:
     name: vault-backend
     kind: SecretStore
 ```
 
-### 3. SOPS (Secrets OPerationS)
+### 3. SOPS
 
 ```bash
-# Chiffrer les fichiers de secrets
+# Encrypt secrets files
 sops -e k8s/secrets.yaml > k8s/secrets.enc.yaml
 ```
 
-## 🔍 Audit de Sécurité
+## Security Audit
 
-### Vérifier qu'aucun secret n'est commité
+### Check for committed secrets
 
 ```bash
-# Rechercher des patterns suspects
+# Search for suspicious patterns
 git log --all --full-history -- .env
-git log --all --full-history -S "password" 
+git log --all --full-history -S "password"
 git log --all --full-history -S "token"
 
-# Scanner avec des outils
+# Scan with tooling
 pip install detect-secrets
 detect-secrets scan --all-files
 ```
 
-### Nettoyer l'historique si nécessaire
+### Clean history if necessary
 
 ```bash
-# Supprimer un fichier de tout l'historique
+# Remove a file from the entire history
 git filter-branch --tree-filter 'rm -f .env' HEAD
 git push --force-with-lease
 ```
 
-## 🚨 En Cas de Fuite
+## In Case of a Leak
 
-1. **Changer immédiatement** tous les mots de passe/tokens exposés
-2. **Révoquer** les accès compromis
-3. **Nettoyer** l'historique Git si nécessaire
-4. **Auditer** les logs pour détecter un usage malveillant
+1. **Immediately rotate** all exposed passwords / tokens
+2. **Revoke** compromised credentials
+3. **Clean** the Git history if necessary
+4. **Audit** logs to detect malicious usage
 
-## 📋 Checklist Avant Commit
+## Pre-Commit Checklist
 
-- [ ] Aucun mot de passe en dur dans le code
-- [ ] Fichiers `.env*` dans `.gitignore`
-- [ ] Exemples utilisent des valeurs factices
-- [ ] Documentation mentionne la sécurité
-- [ ] Tests n'utilisent pas de vraies credentials
+- [ ] No hardcoded passwords in code
+- [ ] `.env*` files in `.gitignore`
+- [ ] Examples use fake/placeholder values
+- [ ] Documentation mentions security
+- [ ] Tests do not use real credentials
 
-## 🔧 Variables de Développement Sûres
+## Safe Development Variables
 
 ```bash
-# Pour les tests locaux, utiliser des valeurs factices
+# For local testing, use fake values
 ELASTICSEARCH_URL=http://localhost:9200
 ELASTICSEARCH_PASSWORD=dev-password-not-real
 SLACK_WEBHOOK=http://localhost:3000/fake-webhook
 ```
 
-## 📞 Contact Sécurité
+## Security Contact
 
-En cas de problème de sécurité détecté :
-- Créer une **issue confidentielle**
-- Ne pas exposer les détails publiquement
-- Proposer une solution dans la même issue
+If you discover a security issue:
+- Open a **confidential issue**
+- Do not expose details publicly
+- Propose a fix in the same issue
