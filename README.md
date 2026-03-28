@@ -1,6 +1,6 @@
 # Agent IA SRE pour Stack EFK
 
-[![CI/CD Pipeline](https://github.com/DamsDGN/efk-sre-agent/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/efk-sre-agent/actions/workflows/ci-cd.yml)
+[![CI/CD Pipeline](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 Un agent d'intelligence artificielle dédié à l'analyse automatisée des métriques et logs d'une stack EFK (Elasticsearch, Fluentd, Kibana) déployée sur Kubernetes.
@@ -62,7 +62,7 @@ L'agent SRE utilise des techniques de Machine Learning pour :
 1. Cloner le repository :
 ```bash
 git clone <repository-url>
-cd efk-sre-agent
+cd kube-seer
 ```
 
 2. Configurer l'environnement de développement :
@@ -114,20 +114,20 @@ kubectl create namespace monitoring
 2. Installer le chart :
 ```bash
 # Environnement de développement
-helm install efk-sre-agent ./helm/efk-sre-agent \
+helm install kube-seer ./helm/kube-seer \
   --namespace monitoring \
-  --values ./helm/efk-sre-agent/examples/values-dev.yaml
+  --values ./helm/kube-seer/examples/values-dev.yaml
 
 # Environnement de production
-helm install efk-sre-agent ./helm/efk-sre-agent \
+helm install kube-seer ./helm/kube-seer \
   --namespace monitoring \
-  --values ./helm/efk-sre-agent/examples/values-prod.yaml
+  --values ./helm/kube-seer/examples/values-prod.yaml
 ```
 
 3. Vérifier le déploiement :
 ```bash
-helm status efk-sre-agent -n monitoring
-kubectl get pods -n monitoring -l app.kubernetes.io/name=efk-sre-agent
+helm status kube-seer -n monitoring
+kubectl get pods -n monitoring -l app.kubernetes.io/name=kube-seer
 ```
 
 #### Gestion du déploiement Helm
@@ -152,7 +152,7 @@ kubectl apply -f k8s/
 
 2. Vérifier le déploiement :
 ```bash
-kubectl get pods -l app=efk-sre-agent
+kubectl get pods -l app=kube-seer
 ```
 
 ## 📊 API REST
@@ -328,7 +328,7 @@ Protection contre le spam :
 ### Structure du projet
 
 ```
-efk-sre-agent/
+kube-seer/
 ├── src/                    # Code source principal
 │   ├── main.py            # Point d'entrée de l'application
 │   ├── agent.py           # Agent SRE principal
@@ -340,7 +340,7 @@ efk-sre-agent/
 │   └── api.py             # API REST
 ├── tests/                 # Tests unitaires
 ├── helm/                  # Charts Helm pour déploiement
-│   └── efk-sre-agent/    # Chart principal
+│   └── kube-seer/    # Chart principal
 │       ├── Chart.yaml    # Métadonnées du chart
 │       ├── values.yaml   # Valeurs par défaut
 │       ├── templates/    # Templates Kubernetes
@@ -444,9 +444,9 @@ Voir le fichier [LICENSE](LICENSE) pour les détails complets.
 
 ## 📞 Support
 
-- **Issues** : [GitHub Issues](https://github.com/DamsDGN/efk-sre-agent/issues)
-- **Documentation** : [Wiki du projet](https://github.com/DamsDGN/efk-sre-agent/wiki)
-- **Discussions** : [GitHub Discussions](https://github.com/DamsDGN/efk-sre-agent/discussions)
+- **Issues** : [GitHub Issues](https://github.com/DamsDGN/kube-seer/issues)
+- **Documentation** : [Wiki du projet](https://github.com/DamsDGN/kube-seer/wiki)
+- **Discussions** : [GitHub Discussions](https://github.com/DamsDGN/kube-seer/discussions)
 - **Commercial** : Contactez l'auteur pour les licences commerciales
 
 ---

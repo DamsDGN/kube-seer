@@ -1,5 +1,5 @@
 apiVersion: v2
-name: efk-sre-agent
+name: kube-seer
 description: AI-powered SRE agent for Kubernetes cluster monitoring
 type: application
 version: 2.0.0

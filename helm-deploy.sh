@@ -5,8 +5,8 @@
 
 set -e
 
-CHART_PATH="./helm/efk-sre-agent"
-RELEASE_NAME="efk-sre-agent"
+CHART_PATH="./helm/kube-seer"
+RELEASE_NAME="kube-seer"
 NAMESPACE="monitoring"
 
 # Couleurs pour l'affichage
@@ -37,7 +37,7 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  -n, --namespace NAMESPACE    Namespace à utiliser (défaut: monitoring)"
-    echo "  -r, --release RELEASE        Nom du release (défaut: efk-sre-agent)"
+    echo "  -r, --release RELEASE        Nom du release (défaut: kube-seer)"
     echo "  -f, --values FILE           Fichier values.yaml personnalisé"
     echo "  --dry-run                   Simulation sans déploiement réel"
     echo "  -h, --help                  Affiche cette aide"
@@ -57,17 +57,17 @@ check_prereqs() {
         echo "Installation: https://helm.sh/docs/intro/install/"
         exit 1
     fi
-    
+
     if ! command -v kubectl &> /dev/null; then
         echo -e "${RED}❌ kubectl n'est pas installé${NC}"
         exit 1
     fi
-    
+
     if ! kubectl cluster-info &> /dev/null; then
         echo -e "${RED}❌ Impossible de se connecter au cluster Kubernetes${NC}"
         exit 1
     fi
-    
+
     if [ ! -d "$CHART_PATH" ]; then
         echo -e "${RED}❌ Chart Helm non trouvé: $CHART_PATH${NC}"
         exit 1
@@ -78,24 +78,24 @@ check_prereqs() {
 install_agent() {
     local values_file="$1"
     local dry_run="$2"
-    
+
     echo -e "${BLUE}🚀 Installation de l'agent SRE EFK...${NC}"
-    
+
     local cmd="helm upgrade --install $RELEASE_NAME $CHART_PATH"
     cmd="$cmd --create-namespace --namespace $NAMESPACE"
     cmd="$cmd --wait --timeout 10m"
-    
+
     if [ -n "$values_file" ]; then
         cmd="$cmd --values $values_file"
     fi
-    
+
     if [ "$dry_run" = "true" ]; then
         cmd="$cmd --dry-run"
     fi
-    
+
     echo -e "${YELLOW}Commande: $cmd${NC}"
     eval $cmd
-    
+
     if [ "$dry_run" != "true" ]; then
         echo -e "${GREEN}✅ Agent installé avec succès!${NC}"
         echo ""
@@ -111,7 +111,7 @@ install_agent() {
 show_status() {
     echo -e "${BLUE}📊 Statut du déploiement${NC}"
     echo ""
-    
+
     if helm list -n $NAMESPACE | grep -q $RELEASE_NAME; then
         echo -e "${GREEN}✅ Release Helm trouvé${NC}"
         helm status $RELEASE_NAME -n $NAMESPACE
@@ -138,26 +138,26 @@ port_forward() {
     echo -e "${BLUE}🌐 Port-forward vers l'agent${NC}"
     echo -e "${YELLOW}API accessible sur: http://localhost:8080${NC}"
     echo -e "${YELLOW}Appuyer Ctrl+C pour arrêter${NC}"
-    kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME-efk-sre-agent 8080:8080
+    kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME-kube-seer 8080:8080
 }
 
 # Test de connectivité
 test_agent() {
     echo -e "${BLUE}🧪 Test de l'agent${NC}"
-    
+
     echo "Port-forward temporaire..."
-    kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME-efk-sre-agent 8080:8080 &
+    kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME-kube-seer 8080:8080 &
     PF_PID=$!
-    
+
     sleep 5
-    
+
     echo "Test de l'endpoint health..."
     if curl -s http://localhost:8080/health > /dev/null; then
         echo -e "${GREEN}✅ Agent accessible et fonctionnel${NC}"
     else
         echo -e "${RED}❌ Agent non accessible${NC}"
     fi
-    
+
     kill $PF_PID 2>/dev/null || true
 }
 

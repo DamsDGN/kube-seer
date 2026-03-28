@@ -26,7 +26,7 @@ on:
 
 #### Pour les **Push main/develop** :
 - ✅ Tests multi-versions Python
-- ✅ Validation Helm  
+- ✅ Validation Helm
 - ✅ **Build et publication Docker**
 - ✅ Scan de sécurité
 - ✅ Publication sur Docker Hub
@@ -113,22 +113,22 @@ Le pipeline génère automatiquement les tags suivants :
 ### Pour les branches
 ```bash
 # Branch main
-damsdgn/efk-sre-agent:latest
-damsdgn/efk-sre-agent:main-<sha>
+damsdgn/kube-seer:latest
+damsdgn/kube-seer:main-<sha>
 
-# Branch develop  
-damsdgn/efk-sre-agent:develop
-damsdgn/efk-sre-agent:develop-<sha>
+# Branch develop
+damsdgn/kube-seer:develop
+damsdgn/kube-seer:develop-<sha>
 ```
 
 ### Pour les tags de release
 ```bash
 # Tag v1.2.3
-damsdgn/efk-sre-agent:v1.2.3
-damsdgn/efk-sre-agent:1.2.3
-damsdgn/efk-sre-agent:1.2
-damsdgn/efk-sre-agent:1
-damsdgn/efk-sre-agent:latest
+damsdgn/kube-seer:v1.2.3
+damsdgn/kube-seer:1.2.3
+damsdgn/kube-seer:1.2
+damsdgn/kube-seer:1
+damsdgn/kube-seer:latest
 ```
 
 ## Workflow PR Validation
@@ -229,10 +229,10 @@ Error: chart metadata is missing
 
 ```bash
 # Tester le build Docker localement
-docker build -t efk-sre-agent:test .
+docker build -t kube-seer:test .
 
 # Valider Helm localement
-helm lint ./helm/efk-sre-agent/
+helm lint ./helm/kube-seer/
 
 # Exécuter les tests comme en CI
 python -m pytest tests/ -v

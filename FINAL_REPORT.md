@@ -32,9 +32,9 @@
 
 #### ✅ **Cluster Kind Opérationnel**
 ```bash
-Cluster: efk-sre-agent
-Namespace: monitoring  
-Image: efk-sre-agent:latest (chargée)
+Cluster: kube-seer
+Namespace: monitoring
+Image: kube-seer:latest (chargée)
 Manifestes: Tous appliqués avec succès
 ```
 
@@ -61,7 +61,7 @@ Test: Gestion d'erreur robuste validée
 
 ### 🎬 Démonstrations Disponibles
 
-#### 1. **Mode API Standalone** 
+#### 1. **Mode API Standalone**
 ```bash
 python demo.py
 # API REST accessible sur http://localhost:8080
@@ -94,7 +94,7 @@ make deploy
 
 3. **Tester l'analyse en temps réel** :
    ```bash
-   kubectl logs -f -n monitoring efk-sre-agent-xxx
+   kubectl logs -f -n monitoring kube-seer-xxx
    ```
 
 #### Pour Production
@@ -105,11 +105,11 @@ make deploy
 
 ### 🏆 **CONCLUSION**
 
-L'**Agent IA SRE EFK** est **100% terminé et opérationnel** ! 
+L'**Agent IA SRE EFK** est **100% terminé et opérationnel** !
 
 **Points forts démontrés :**
 - ✅ Architecture ML sophistiquée implémentée
-- ✅ Déploiement Kubernetes réussi  
+- ✅ Déploiement Kubernetes réussi
 - ✅ Tests validés (85,7% de réussite)
 - ✅ Code production-ready
 - ✅ Sécurité respectée
@@ -123,4 +123,4 @@ L'**Agent IA SRE EFK** est **100% terminé et opérationnel** !
 🚀 **L'agent est prêt à surveiller et analyser une vraie stack EFK en production !**
 
 ---
-*Rapport généré le 8 octobre 2025 - Projet efk-sre-agent v1.0*
+*Rapport généré le 8 octobre 2025 - Projet kube-seer v1.0*

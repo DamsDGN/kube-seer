@@ -2,7 +2,7 @@
 
 ## Overview
 
-Redesign of the efk-sre-agent from an EFK-stack monitoring tool into a **full Kubernetes cluster SRE agent** with intelligent monitoring capabilities. Elasticsearch serves solely as a storage backend for metrics, logs, and analysis results. The agent ensures **data sovereignty** by keeping all data under the client's control.
+Redesign of the kube-seer from an EFK-stack monitoring tool into a **full Kubernetes cluster SRE agent** with intelligent monitoring capabilities. Elasticsearch serves solely as a storage backend for metrics, logs, and analysis results. The agent ensures **data sovereignty** by keeping all data under the client's control.
 
 ## Goals
 
@@ -26,7 +26,7 @@ Redesign of the efk-sre-agent from an EFK-stack monitoring tool into a **full Ku
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  efk-sre-agent                   │
+│                  kube-seer                   │
 │                                                  │
 │  ┌────────────┐  ┌────────────┐  ┌───────────┐  │
 │  │ collector/ │  │ collector/ │  │ collector/ │  │
@@ -198,7 +198,7 @@ When LLM is disabled, layers 1-3 operate autonomously with structured reports (J
 
 - Agent pushes alerts in Prometheus format (labels, annotations, severity) to Alertmanager API (`/api/v2/alerts`).
 - Client manages routing and notifications in their existing Alertmanager config.
-- Standard labels: `agent=efk-sre-agent`, `cluster=<name>`, `namespace`, `resource_type`, `severity` (critical, warning, info).
+- Standard labels: `agent=kube-seer`, `cluster=<name>`, `namespace`, `resource_type`, `severity` (critical, warning, info).
 
 ### Fallback Mode — Webhooks
 

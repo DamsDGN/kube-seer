@@ -147,7 +147,7 @@ class TestAlertmanagerFormat:
         assert len(alerts) == 1
         alert = alerts[0]
         assert alert["labels"]["severity"] == "critical"
-        assert alert["labels"]["agent"] == "efk-sre-agent"
+        assert alert["labels"]["agent"] == "kube-seer"
         assert alert["labels"]["resource_type"] == "node"
         assert alert["labels"]["resource_name"] == "node-1"
         assert "CPU usage critical" in alert["annotations"]["description"]
@@ -282,7 +282,7 @@ class AlertmanagerClient(BaseAlerter):
         for a in anomalies:
             labels: Dict[str, str] = {
                 "alertname": f"sre_{a.source}_{a.resource_type}",
-                "agent": "efk-sre-agent",
+                "agent": "kube-seer",
                 "severity": SEVERITY_MAP.get(a.severity, "warning"),
                 "source": a.source,
                 "resource_type": a.resource_type,
@@ -487,7 +487,7 @@ class WebhookAlerter(BaseAlerter):
         self, anomalies: List[Anomaly]
     ) -> Dict[str, Any]:
         return {
-            "agent": "efk-sre-agent",
+            "agent": "kube-seer",
             "anomalies": [a.model_dump() for a in anomalies],
             "count": len(anomalies),
         }

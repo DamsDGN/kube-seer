@@ -1,6 +1,9 @@
 # Worktrees
 .worktrees/
 
+# Environnement local
+local-env/
+
 # Fichiers de configuration locale
 .env
 .env.local

@@ -15,14 +15,14 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: efk-sre-agent
+  name: kube-seer
   namespace: monitoring
   labels:
-    app: efk-sre-agent
+    app: kube-seer
 spec:
   selector:
     matchLabels:
-      app: efk-sre-agent
+      app: kube-seer
   endpoints:
   - port: http
     path: /metrics
@@ -31,41 +31,41 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: efk-sre-agent-alerts
+  name: kube-seer-alerts
   namespace: monitoring
   labels:
-    app: efk-sre-agent
+    app: kube-seer
 spec:
   groups:
-  - name: efk-sre-agent
+  - name: kube-seer
     rules:
     - alert: SREAgentDown
-      expr: up{job="efk-sre-agent"} == 0
+      expr: up{job="kube-seer"} == 0
       for: 1m
       labels:
         severity: critical
       annotations:
         summary: "EFK SRE Agent is down"
         description: "EFK SRE Agent has been down for more than 1 minute."
-    
+
     - alert: SREAgentHighMemoryUsage
-      expr: container_memory_usage_bytes{pod=~"efk-sre-agent.*"} / container_spec_memory_limit_bytes > 0.8
+      expr: container_memory_usage_bytes{pod=~"kube-seer.*"} / container_spec_memory_limit_bytes > 0.8
       for: 5m
       labels:
         severity: warning
       annotations:
         summary: "EFK SRE Agent high memory usage"
         description: "EFK SRE Agent memory usage is above 80% for more than 5 minutes."
-    
+
     - alert: SREAgentHighCPUUsage
-      expr: rate(container_cpu_usage_seconds_total{pod=~"efk-sre-agent.*"}[5m]) > 0.8
+      expr: rate(container_cpu_usage_seconds_total{pod=~"kube-seer.*"}[5m]) > 0.8
       for: 5m
       labels:
         severity: warning
       annotations:
         summary: "EFK SRE Agent high CPU usage"
         description: "EFK SRE Agent CPU usage is above 80% for more than 5 minutes."
-    
+
     - alert: SREAgentTooManyAlerts
       expr: increase(sre_agent_alerts_total[1h]) > 100
       for: 0m

@@ -19,7 +19,7 @@
 
 ### 3. Environnement de Développement
 - **Kind** : Cluster local configuré et fonctionnel
-- **Scripts d'Automatisation** : `deploy.sh`, `setup.sh`, `test.sh` 
+- **Scripts d'Automatisation** : `deploy.sh`, `setup.sh`, `test.sh`
 - **Makefile** : Workflows de développement standardisés
 - **Tests** : Suite pytest avec 11/14 tests réussis
 - **CI/CD** : Pre-commit hooks configurés
@@ -34,7 +34,7 @@
 
 ### Cluster Kind
 ```bash
-✅ Cluster 'efk-sre-agent' créé et fonctionnel
+✅ Cluster 'kube-seer' créé et fonctionnel
 ✅ Namespace 'monitoring' configuré
 ✅ Image Docker construite et chargée
 ✅ Manifestes Kubernetes appliqués
@@ -51,7 +51,7 @@
 ```
 🚀 Démarrage de l'agent IA SRE EFK...
 📊 Configuration chargée
-🤖 Modèles de logs initialisés  
+🤖 Modèles de logs initialisés
 ❌ Impossible de se connecter à Elasticsearch (attendu)
 🛑 Agent arrêté proprement
 ```
@@ -59,7 +59,7 @@
 ## 🧪 Tests et Validation
 
 ### Tests Unitaires
-- **11/14 tests réussis** 
+- **11/14 tests réussis**
 - **3 échecs** : Tests d'intégration nécessitant Elasticsearch (normal)
 - **Couverture** : Logique métier, ML, configuration validés
 

@@ -64,7 +64,7 @@ alerter:
 
 # Image
 image:
-  repository: damsdgn29/efk-sre-agent
+  repository: damsdgn29/kube-seer
   tag: "2.0.0"
   pullPolicy: IfNotPresent
 

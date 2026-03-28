@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild efk-sre-agent with a modular architecture, implementing collectors (Prometheus, metrics-server, K8s API), Elasticsearch storage, Helm chart, and base API endpoints.
+**Goal:** Rebuild kube-seer with a modular architecture, implementing collectors (Prometheus, metrics-server, K8s API), Elasticsearch storage, Helm chart, and base API endpoints.
 
 **Architecture:** Each module exposes a base interface in `base.py`. The orchestrator (`agent.py`) wires modules together. Collectors gather data from Prometheus, metrics-server, and the Kubernetes API. Storage writes/reads Elasticsearch. The API exposes health, readiness, status, and config endpoints via FastAPI.
 
@@ -51,7 +51,7 @@ tests/
 ├── test_agent.py
 └── test_api.py
 
-helm/efk-sre-agent/
+helm/kube-seer/
 ├── Chart.yaml
 ├── values.yaml
 ├── templates/
@@ -167,7 +167,7 @@ def sample_timestamp():
 
 - [ ] **Step 4: Install dependencies**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && pip install -r requirements.txt`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && pip install -r requirements.txt`
 
 - [ ] **Step 5: Commit**
 
@@ -268,7 +268,7 @@ class TestConfigValidation:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_config.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_config.py -v`
 Expected: FAIL — `src.config` module does not have the new Config class yet.
 
 - [ ] **Step 3: Write the implementation**
@@ -345,7 +345,7 @@ class Config(BaseModel):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_config.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_config.py -v`
 Expected: All 7 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -493,7 +493,7 @@ class TestStoredRecord:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_models.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_models.py -v`
 Expected: FAIL — imports don't resolve.
 
 - [ ] **Step 3: Write the implementation**
@@ -574,7 +574,7 @@ class StoredRecord(BaseModel):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_models.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_models.py -v`
 Expected: All 8 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -793,7 +793,7 @@ class TestPrometheusCollectorPodMetrics:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/collector/test_prometheus.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/collector/test_prometheus.py -v`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Write the implementation**
@@ -964,7 +964,7 @@ class PrometheusCollector(MetricsCollector):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/collector/test_prometheus.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/collector/test_prometheus.py -v`
 Expected: All 6 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1095,7 +1095,7 @@ class TestMetricsServerPodMetrics:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/collector/test_metrics_server.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/collector/test_metrics_server.py -v`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Write the implementation**
@@ -1244,7 +1244,7 @@ class MetricsServerCollector(MetricsCollector):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/collector/test_metrics_server.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/collector/test_metrics_server.py -v`
 Expected: All 5 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1383,7 +1383,7 @@ class TestKubernetesApiHealthy:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/collector/test_k8s_api.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/collector/test_k8s_api.py -v`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Write the implementation**
@@ -1618,7 +1618,7 @@ class KubernetesApiCollector(StateCollector):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/collector/test_k8s_api.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/collector/test_k8s_api.py -v`
 Expected: All 6 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1790,7 +1790,7 @@ class TestElasticsearchQuery:
 
 - [ ] **Step 3: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/storage/test_elasticsearch.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/storage/test_elasticsearch.py -v`
 Expected: FAIL — module not found.
 
 - [ ] **Step 4: Write the implementation**
@@ -1897,7 +1897,7 @@ class ElasticsearchStorage(BaseStorage):
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/storage/test_elasticsearch.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/storage/test_elasticsearch.py -v`
 Expected: All 6 tests PASS.
 
 - [ ] **Step 6: Commit**
@@ -2083,7 +2083,7 @@ class TestSREAgentCycle:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_agent.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_agent.py -v`
 Expected: FAIL — new SREAgent class not implemented.
 
 - [ ] **Step 3: Write the implementation**
@@ -2257,7 +2257,7 @@ class SREAgent:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_agent.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_agent.py -v`
 Expected: All 5 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -2371,7 +2371,7 @@ class TestConfigEndpoint:
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_api.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_api.py -v`
 Expected: FAIL — `create_app` not found.
 
 - [ ] **Step 3: Write the implementation**
@@ -2452,7 +2452,7 @@ def create_app(config: Config, agent) -> FastAPI:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/test_api.py -v`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/test_api.py -v`
 Expected: All 5 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -2572,27 +2572,27 @@ git commit -m "feat: rewrite entrypoint with modular config and API"
 ## Task 12: Helm chart rewrite
 
 **Files:**
-- Modify: `helm/efk-sre-agent/Chart.yaml`
-- Rewrite: `helm/efk-sre-agent/values.yaml`
-- Rewrite: `helm/efk-sre-agent/templates/deployment.yaml`
-- Rewrite: `helm/efk-sre-agent/templates/configmap.yaml`
-- Rewrite: `helm/efk-sre-agent/templates/secret.yaml`
-- Rewrite: `helm/efk-sre-agent/templates/service.yaml`
-- Rewrite: `helm/efk-sre-agent/templates/serviceaccount.yaml`
-- Create: `helm/efk-sre-agent/templates/clusterrole.yaml`
-- Create: `helm/efk-sre-agent/templates/clusterrolebinding.yaml`
-- Create: `helm/efk-sre-agent/templates/pdb.yaml`
-- Rewrite: `helm/efk-sre-agent/templates/servicemonitor.yaml`
-- Delete: `helm/efk-sre-agent/templates/ingress.yaml`
-- Delete: `helm/efk-sre-agent/templates/hpa.yaml`
-- Delete: `helm/efk-sre-agent/templates/pvc.yaml`
+- Modify: `helm/kube-seer/Chart.yaml`
+- Rewrite: `helm/kube-seer/values.yaml`
+- Rewrite: `helm/kube-seer/templates/deployment.yaml`
+- Rewrite: `helm/kube-seer/templates/configmap.yaml`
+- Rewrite: `helm/kube-seer/templates/secret.yaml`
+- Rewrite: `helm/kube-seer/templates/service.yaml`
+- Rewrite: `helm/kube-seer/templates/serviceaccount.yaml`
+- Create: `helm/kube-seer/templates/clusterrole.yaml`
+- Create: `helm/kube-seer/templates/clusterrolebinding.yaml`
+- Create: `helm/kube-seer/templates/pdb.yaml`
+- Rewrite: `helm/kube-seer/templates/servicemonitor.yaml`
+- Delete: `helm/kube-seer/templates/ingress.yaml`
+- Delete: `helm/kube-seer/templates/hpa.yaml`
+- Delete: `helm/kube-seer/templates/pvc.yaml`
 
 - [ ] **Step 1: Update Chart.yaml**
 
-`helm/efk-sre-agent/Chart.yaml`:
+`helm/kube-seer/Chart.yaml`:
 ```yaml
 apiVersion: v2
-name: efk-sre-agent
+name: kube-seer
 description: AI-powered SRE agent for Kubernetes cluster monitoring
 type: application
 version: 2.0.0
@@ -2601,7 +2601,7 @@ appVersion: "2.0.0"
 
 - [ ] **Step 2: Rewrite values.yaml**
 
-`helm/efk-sre-agent/values.yaml`:
+`helm/kube-seer/values.yaml`:
 ```yaml
 # Agent
 agent:
@@ -2669,7 +2669,7 @@ alerter:
 
 # Image
 image:
-  repository: damsdgn29/efk-sre-agent
+  repository: damsdgn29/kube-seer
   tag: "2.0.0"
   pullPolicy: IfNotPresent
 
@@ -2706,14 +2706,14 @@ securityContext:
 
 - [ ] **Step 3: Rewrite templates**
 
-`helm/efk-sre-agent/templates/configmap.yaml`:
+`helm/kube-seer/templates/configmap.yaml`:
 ```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 data:
   ELASTICSEARCH_URL: {{ .Values.elasticsearch.url | quote }}
   ELASTICSEARCH_USERNAME: {{ .Values.elasticsearch.username | quote }}
@@ -2746,15 +2746,15 @@ data:
   ALERTER_FALLBACK_WEBHOOK_URL: {{ .Values.alerter.fallback.webhook.url | quote }}
 ```
 
-`helm/efk-sre-agent/templates/secret.yaml`:
+`helm/kube-seer/templates/secret.yaml`:
 ```yaml
 {{- if not .Values.elasticsearch.secretRef }}
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 type: Opaque
 stringData:
   ELASTICSEARCH_PASSWORD: {{ .Values.elasticsearch.password | quote }}
@@ -2764,28 +2764,28 @@ stringData:
 {{- end }}
 ```
 
-`helm/efk-sre-agent/templates/deployment.yaml`:
+`helm/kube-seer/templates/deployment.yaml`:
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "efk-sre-agent.selectorLabels" . | nindent 6 }}
+      {{- include "kube-seer.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
-        {{- include "efk-sre-agent.selectorLabels" . | nindent 8 }}
+        {{- include "kube-seer.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "efk-sre-agent.fullname" . }}
+      serviceAccountName: {{ include "kube-seer.fullname" . }}
       securityContext:
         runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
         runAsUser: {{ .Values.securityContext.runAsUser }}
@@ -2801,13 +2801,13 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: {{ include "efk-sre-agent.fullname" . }}
+                name: {{ include "kube-seer.fullname" . }}
             {{- if .Values.elasticsearch.secretRef }}
             - secretRef:
                 name: {{ .Values.elasticsearch.secretRef }}
             {{- else }}
             - secretRef:
-                name: {{ include "efk-sre-agent.fullname" . }}
+                name: {{ include "kube-seer.fullname" . }}
             {{- end }}
           livenessProbe:
             httpGet:
@@ -2827,14 +2827,14 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
 ```
 
-`helm/efk-sre-agent/templates/service.yaml`:
+`helm/kube-seer/templates/service.yaml`:
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -2843,27 +2843,27 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "efk-sre-agent.selectorLabels" . | nindent 4 }}
+    {{- include "kube-seer.selectorLabels" . | nindent 4 }}
 ```
 
-`helm/efk-sre-agent/templates/serviceaccount.yaml`:
+`helm/kube-seer/templates/serviceaccount.yaml`:
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 ```
 
-`helm/efk-sre-agent/templates/clusterrole.yaml`:
+`helm/kube-seer/templates/clusterrole.yaml`:
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["pods", "nodes", "events", "services", "namespaces", "persistentvolumes", "persistentvolumeclaims", "resourcequotas", "limitranges"]
@@ -2888,54 +2888,54 @@ rules:
     verbs: ["get", "list"]
 ```
 
-`helm/efk-sre-agent/templates/clusterrolebinding.yaml`:
+`helm/kube-seer/templates/clusterrolebinding.yaml`:
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "efk-sre-agent.fullname" . }}
+    name: {{ include "kube-seer.fullname" . }}
     namespace: {{ .Release.Namespace }}
 ```
 
-`helm/efk-sre-agent/templates/pdb.yaml`:
+`helm/kube-seer/templates/pdb.yaml`:
 ```yaml
 {{- if .Values.podDisruptionBudget.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
-      {{- include "efk-sre-agent.selectorLabels" . | nindent 6 }}
+      {{- include "kube-seer.selectorLabels" . | nindent 6 }}
 {{- end }}
 ```
 
-`helm/efk-sre-agent/templates/servicemonitor.yaml`:
+`helm/kube-seer/templates/servicemonitor.yaml`:
 ```yaml
 {{- if .Values.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "efk-sre-agent.selectorLabels" . | nindent 6 }}
+      {{- include "kube-seer.selectorLabels" . | nindent 6 }}
   endpoints:
     - port: http
       path: /metrics
@@ -2946,18 +2946,18 @@ spec:
 - [ ] **Step 4: Remove obsolete templates**
 
 ```bash
-rm -f helm/efk-sre-agent/templates/ingress.yaml helm/efk-sre-agent/templates/hpa.yaml helm/efk-sre-agent/templates/pvc.yaml
+rm -f helm/kube-seer/templates/ingress.yaml helm/kube-seer/templates/hpa.yaml helm/kube-seer/templates/pvc.yaml
 ```
 
 - [ ] **Step 5: Lint the chart**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && helm lint helm/efk-sre-agent --set elasticsearch.url=http://es:9200`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && helm lint helm/kube-seer --set elasticsearch.url=http://es:9200`
 Expected: "0 chart(s) failed" — lint passes.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add helm/efk-sre-agent/
+git add helm/kube-seer/
 git commit -m "feat: rewrite Helm chart for modular SRE agent v2"
 ```
 
@@ -2970,17 +2970,17 @@ git commit -m "feat: rewrite Helm chart for modular SRE agent v2"
 
 - [ ] **Step 1: Run all tests**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/ -v --tb=short`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/ -v --tb=short`
 Expected: All tests PASS.
 
 - [ ] **Step 2: Run linting**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m flake8 src/ tests/ --max-line-length=100 --extend-ignore=E203,W503`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m flake8 src/ tests/ --max-line-length=100 --extend-ignore=E203,W503`
 Expected: No errors.
 
 - [ ] **Step 3: Run type checking**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m mypy src/ --ignore-missing-imports`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m mypy src/ --ignore-missing-imports`
 Expected: No errors.
 
 - [ ] **Step 4: Fix any issues found in steps 1-3 and re-run**
@@ -3001,21 +3001,21 @@ git commit -m "fix: resolve linting and type issues"
 - Delete: `src/log_analyzer.py`
 - Delete: `src/alerting.py`
 - Delete: `demo.py`
-- Delete: `helm/efk-sre-agent/templates/rbac.yaml` (replaced by clusterrole.yaml + clusterrolebinding.yaml)
-- Delete: `helm/efk-sre-agent/examples/` (outdated)
+- Delete: `helm/kube-seer/templates/rbac.yaml` (replaced by clusterrole.yaml + clusterrolebinding.yaml)
+- Delete: `helm/kube-seer/examples/` (outdated)
 
 - [ ] **Step 1: Remove obsolete source files**
 
 ```bash
-cd /home/dams/Documents/Projets/Perso/efk-sre-agent
+cd /home/dams/Documents/Projets/Perso/kube-seer
 rm -f src/metrics_analyzer.py src/log_analyzer.py src/alerting.py demo.py
-rm -f helm/efk-sre-agent/templates/rbac.yaml
-rm -rf helm/efk-sre-agent/examples/
+rm -f helm/kube-seer/templates/rbac.yaml
+rm -rf helm/kube-seer/examples/
 ```
 
 - [ ] **Step 2: Verify tests still pass**
 
-Run: `cd /home/dams/Documents/Projets/Perso/efk-sre-agent && python -m pytest tests/ -v --tb=short`
+Run: `cd /home/dams/Documents/Projets/Perso/kube-seer && python -m pytest tests/ -v --tb=short`
 Expected: All tests PASS.
 
 - [ ] **Step 3: Commit**

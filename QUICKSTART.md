@@ -37,8 +37,8 @@ sudo mv ./kind /usr/local/bin/kind
 
 ```bash
 # Clone le repo (si pas déjà fait)
-git clone https://github.com/DamsDGN/efk-sre-agent.git
-cd efk-sre-agent
+git clone https://github.com/DamsDGN/kube-seer.git
+cd kube-seer
 
 # Configuration complète en une commande
 make setup
@@ -134,7 +134,7 @@ Installés globalement, utilisables partout :
 - `black` : Formatage automatique
 - `flake8` : Analyse statique
 - `mypy` : Vérification de types
-- `pytest` : Tests unitaires  
+- `pytest` : Tests unitaires
 - `pre-commit` : Hooks Git automatiques
 
 ## 🔧 Développement
@@ -156,13 +156,13 @@ Installés globalement, utilisables partout :
 kubectl get pods -n monitoring
 
 # Logs en temps réel
-kubectl logs -f -n monitoring deployment/efk-sre-agent
+kubectl logs -f -n monitoring deployment/kube-seer
 
 # Shell dans le pod
-kubectl exec -it -n monitoring deployment/efk-sre-agent -- /bin/bash
+kubectl exec -it -n monitoring deployment/kube-seer -- /bin/bash
 
 # Forward de l'API
-kubectl port-forward -n monitoring svc/efk-sre-agent 8080:8080
+kubectl port-forward -n monitoring svc/kube-seer 8080:8080
 ```
 
 ## 🧪 Tests avec Elasticsearch simulé
@@ -196,11 +196,11 @@ kubectl wait --for=condition=ready pod -l app=elasticsearch-dev -n monitoring --
 
 ```bash
 # Vérifier les logs
-kubectl logs -n monitoring deployment/efk-sre-agent
+kubectl logs -n monitoring deployment/kube-seer
 
 # Vérifier la configuration
-kubectl get configmap -n monitoring efk-sre-agent-config -o yaml
-kubectl get secret -n monitoring efk-sre-agent-secrets -o yaml
+kubectl get configmap -n monitoring kube-seer-config -o yaml
+kubectl get secret -n monitoring kube-seer-secrets -o yaml
 ```
 
 ### Problèmes de réseau
@@ -211,7 +211,7 @@ kubectl get svc -n monitoring
 
 # Tester la connectivité interne
 kubectl run test-pod --image=busybox -it --rm -- /bin/sh
-# Dans le pod: nslookup efk-sre-agent.monitoring.svc.cluster.local
+# Dans le pod: nslookup kube-seer.monitoring.svc.cluster.local
 ```
 
 ### Rechargement de l'image
@@ -219,7 +219,7 @@ kubectl run test-pod --image=busybox -it --rm -- /bin/sh
 ```bash
 # Si l'image ne se met pas à jour
 ./deploy.sh build  # Rebuild et recharge dans Kind
-kubectl rollout restart deployment/efk-sre-agent -n monitoring
+kubectl rollout restart deployment/kube-seer -n monitoring
 ```
 
 ## 📋 Configuration
@@ -236,7 +236,7 @@ nano .env  # Modifier selon vos besoins
 ## 🔗 URLs utiles
 
 - **API Health** : http://localhost:8080/health
-- **API Status** : http://localhost:8080/status  
+- **API Status** : http://localhost:8080/status
 - **API Docs** : http://localhost:8080/docs
 - **Métriques** : http://localhost:8080/metrics
 

@@ -16,17 +16,17 @@ Chart Helm pour déployer l'Agent IA SRE pour l'analyse automatisée des métriq
 
 ```bash
 # Ajouter le repo (si disponible)
-helm repo add efk-sre-agent https://damsdgn.github.io/efk-sre-agent/
+helm repo add kube-seer https://damsdgn.github.io/kube-seer/
 
 # Installer avec la configuration par défaut
-helm install my-sre-agent efk-sre-agent/efk-sre-agent
+helm install my-sre-agent kube-seer/kube-seer
 ```
 
 ### Installation locale (développement)
 
 ```bash
 # Depuis le répertoire du projet
-helm install my-sre-agent ./helm/efk-sre-agent/
+helm install my-sre-agent ./helm/kube-seer/
 ```
 
 ### Installation avec configuration personnalisée
@@ -69,7 +69,7 @@ resources:
 EOF
 
 # Installer avec la configuration personnalisée
-helm install my-sre-agent ./helm/efk-sre-agent/ -f values-custom.yaml
+helm install my-sre-agent ./helm/kube-seer/ -f values-custom.yaml
 ```
 
 ## Configuration
@@ -97,7 +97,7 @@ kubectl create secret generic elasticsearch-credentials \
   --from-literal=password="your-elasticsearch-password"
 
 # Webhook Slack (optionnel)
-kubectl patch secret my-sre-agent-efk-sre-agent-secrets \
+kubectl patch secret my-sre-agent-kube-seer-secrets \
   -p='{"data":{"SLACK_WEBHOOK":"'$(echo -n "https://hooks.slack.com/your/webhook" | base64)'"}}'
 ```
 
@@ -144,16 +144,16 @@ autoscaling:
 helm status my-sre-agent
 
 # Mettre à jour
-helm upgrade my-sre-agent ./helm/efk-sre-agent/ -f values-custom.yaml
+helm upgrade my-sre-agent ./helm/kube-seer/ -f values-custom.yaml
 
 # Désinstaller
 helm uninstall my-sre-agent
 
 # Voir les logs
-kubectl logs -f deployment/my-sre-agent-efk-sre-agent
+kubectl logs -f deployment/my-sre-agent-kube-seer
 
 # Port-forward pour accéder à l'API
-kubectl port-forward svc/my-sre-agent-efk-sre-agent 8080:8080
+kubectl port-forward svc/my-sre-agent-kube-seer 8080:8080
 ```
 
 ## API
@@ -172,7 +172,7 @@ Une fois déployé, l'agent expose une API REST sur le port 8080 :
 
 1. Vérifiez l'URL Elasticsearch :
    ```bash
-   kubectl exec deployment/my-sre-agent-efk-sre-agent -- curl -I http://elasticsearch:9200
+   kubectl exec deployment/my-sre-agent-kube-seer -- curl -I http://elasticsearch:9200
    ```
 
 2. Vérifiez les credentials :
@@ -184,7 +184,7 @@ Une fois déployé, l'agent expose une API REST sur le port 8080 :
 
 Vérifiez que la PVC est bien montée :
 ```bash
-kubectl describe pod -l app.kubernetes.io/name=efk-sre-agent
+kubectl describe pod -l app.kubernetes.io/name=kube-seer
 ```
 
 ### Pas d'alertes reçues

@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "efk-sre-agent.selectorLabels" . | nindent 6 }}
+      {{- include "kube-seer.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
-        {{- include "efk-sre-agent.selectorLabels" . | nindent 8 }}
+        {{- include "kube-seer.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "efk-sre-agent.fullname" . }}
+      serviceAccountName: {{ include "kube-seer.fullname" . }}
       securityContext:
         runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
         runAsUser: {{ .Values.securityContext.runAsUser }}
@@ -33,13 +33,13 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: {{ include "efk-sre-agent.fullname" . }}
+                name: {{ include "kube-seer.fullname" . }}
             {{- if .Values.elasticsearch.secretRef }}
             - secretRef:
                 name: {{ .Values.elasticsearch.secretRef }}
             {{- else }}
             - secretRef:
-                name: {{ include "efk-sre-agent.fullname" . }}
+                name: {{ include "kube-seer.fullname" . }}
             {{- end }}
           livenessProbe:
             httpGet:
