@@ -188,7 +188,10 @@ install_prometheus() {
 
 # ------------------------------------------------------------
 install_fluent_bit() {
-    # The log index name must match elasticsearch.indices.logs in helm/kube-seer/values.yaml
+    # NOTE: Fluent Bit is installed here for local development only.
+    # In production, clients provision their own log shipper.
+    # The index name is read from values.yaml (elasticsearch.indices.logs)
+    # so Fluent Bit writes to the same index kube-seer is configured to read.
     local log_index
     log_index=$(grep 'logs:' ./helm/kube-seer/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
 

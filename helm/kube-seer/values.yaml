@@ -12,6 +12,7 @@ elasticsearch:
   verifyTls: true
   indices:
     metrics: "sre-metrics"
+    # Set logs to match your existing log shipper index name or pattern (e.g. "my-logs-*")
     logs: "sre-logs"
     anomalies: "sre-anomalies"
 
