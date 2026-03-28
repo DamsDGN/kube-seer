@@ -110,6 +110,10 @@ metadata:
   namespace: ${NAMESPACE_ELASTIC}
 spec:
   version: ${ES_VERSION}
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
   nodeSets:
   - name: default
     count: 1
