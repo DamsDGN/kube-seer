@@ -1,7 +1,7 @@
 import structlog
 from typing import Any, Dict, List, Optional
 
-from elasticsearch import AsyncElasticsearch
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from elasticsearch.helpers import async_bulk
 
 from src.config import Config
@@ -91,6 +91,9 @@ class ElasticsearchStorage(BaseStorage):
         try:
             result = await self._client.search(index=index, query=query_body, size=size)
             return [hit["_source"] for hit in result["hits"]["hits"]]
+        except NotFoundError:
+            logger.warning("elasticsearch_storage.index_not_found", index=index)
+            return []
         except Exception as e:
             logger.error("elasticsearch_storage.query_error", index=index, error=str(e))
             return []
