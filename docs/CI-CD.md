@@ -1,96 +1,96 @@
-# Configuration CI/CD
+# CI/CD Configuration
 
-## Configuration des secrets GitHub
+## GitHub Secrets
 
-Pour que le pipeline CI/CD fonctionne correctement, vous devez configurer les secrets suivants dans votre repository GitHub :
+For the CI/CD pipeline to work, configure the following secrets in your GitHub repository:
 
-### Secrets requis
+### Required Secrets
 
-1. **DOCKERHUB_USERNAME** : Votre nom d'utilisateur Docker Hub
-2. **DOCKERHUB_TOKEN** : Token d'accès Docker Hub (recommandé plutôt que le mot de passe)
+1. **DOCKERHUB_USERNAME** — Your Docker Hub username
+2. **DOCKERHUB_TOKEN** — Docker Hub access token (recommended over password)
 
-### Comment configurer les secrets
+### How to Configure Secrets
 
-1. Allez dans votre repository GitHub
-2. Cliquez sur **Settings** > **Secrets and variables** > **Actions**
-3. Cliquez sur **New repository secret**
-4. Ajoutez chaque secret :
+1. Go to your GitHub repository
+2. Click **Settings** > **Secrets and variables** > **Actions**
+3. Click **New repository secret**
+4. Add each secret:
 
 #### DOCKERHUB_USERNAME
-- **Name** : `DOCKERHUB_USERNAME`
-- **Secret** : Votre nom d'utilisateur Docker Hub
+- **Name**: `DOCKERHUB_USERNAME`
+- **Secret**: Your Docker Hub username
 
 #### DOCKERHUB_TOKEN
-- **Name** : `DOCKERHUB_TOKEN`
-- **Secret** : Votre token d'accès Docker Hub
+- **Name**: `DOCKERHUB_TOKEN`
+- **Secret**: Your Docker Hub access token
 
-### Créer un token Docker Hub
+### Create a Docker Hub Token
 
-1. Connectez-vous à [Docker Hub](https://hub.docker.com/)
-2. Allez dans **Account Settings** > **Security**
-3. Cliquez sur **New Access Token**
-4. Donnez un nom au token (ex: "GitHub Actions CI/CD")
-5. Sélectionnez les permissions appropriées (Read, Write, Delete)
-6. Copiez le token généré et utilisez-le comme `DOCKERHUB_TOKEN`
+1. Log in to [Docker Hub](https://hub.docker.com/)
+2. Go to **Account Settings** > **Security**
+3. Click **New Access Token**
+4. Give the token a name (e.g. "GitHub Actions CI/CD")
+5. Select appropriate permissions (Read, Write, Delete)
+6. Copy the generated token and use it as `DOCKERHUB_TOKEN`
 
-## Pipeline CI/CD
+## CI/CD Pipeline
 
-Le pipeline est configuré pour :
+The pipeline is configured for:
 
-### Déclencheurs
-- Push sur `main` et `develop`
-- Pull requests vers `main`
-- Tags commençant par `v*`
+### Triggers
+- Push to `main`
+- Pull requests targeting `main`
+- Tags starting with `v*`
 
-### Étapes principales
+### Main Steps
 
-1. **Tests** : Tests unitaires sur Python 3.11, 3.12, 3.13
-2. **Sécurité** : Scan de vulnérabilités avec Trivy
-3. **Helm** : Validation du chart Helm
-4. **Docker** : Build multi-plateforme (linux/amd64, linux/arm64)
-5. **Publication** : Push automatique sur Docker Hub
-6. **Release** : Création automatique de releases GitHub pour les tags
+1. **Tests** — Unit tests on Python 3.11, 3.12, 3.13
+2. **Security** — Vulnerability scan with Trivy + Bandit
+3. **Helm** — Chart validation
+4. **Docker** — Multi-platform build (linux/amd64, linux/arm64)
+5. **Publish** — Automatic push to Docker Hub
+6. **Release** — Automatic GitHub release for tags
 
-### Variables d'environnement
+### Environment Variables
 
-Le pipeline utilise les variables suivantes :
+The pipeline uses:
 
-- `REGISTRY` : `docker.io` (Docker Hub)
-- `IMAGE_NAME` : `kube-seer`
-- `IMAGE_TAG` : Généré automatiquement basé sur le SHA du commit ou le tag
+- `REGISTRY` — `docker.io` (Docker Hub)
+- `IMAGE_NAME` — `kube-seer`
+- `IMAGE_TAG` — Generated from commit SHA or tag
 
-### Sécurité
+### Security
 
-- Scan de vulnérabilités avec Trivy
-- Images multi-stage pour réduire la surface d'attaque
-- Utilisateur non-root dans le conteneur
-- Pas de secrets hardcodés dans le code
+- Vulnerability scanning with Trivy
+- Multi-stage images to reduce attack surface
+- Non-root user in container
+- No hardcoded secrets in code
 
-## Utilisation
+## Usage
 
-### Développement
-- Les pushes sur `develop` déclenchent les tests et le build
-- Les images sont taguées avec `develop-<sha>`
+### Development
+- Pushes trigger tests and build
+- Images tagged with `<branch>-<sha>`
 
 ### Production
-- Les pushes sur `main` déclenchent le pipeline complet
-- Les images sont taguées avec `latest` et `main-<sha>`
+- Pushes to `main` trigger the full pipeline
+- Images tagged with `latest` and `main-<sha>`
 
 ### Releases
-- Créez un tag `v1.0.0` pour déclencher une release
-- L'image sera taguée avec `v1.0.0` et `latest`
-- Une release GitHub sera créée automatiquement
+- Create a tag `v1.0.0` to trigger a release
+- Image tagged with `v1.0.0` and `latest`
+- GitHub release created automatically
 
-## Commandes utiles
+## Useful Commands
 
 ```bash
-# Créer un tag pour release
+# Create a release tag
 git tag v1.0.0
 git push origin v1.0.0
 
-# Vérifier le statut du pipeline
+# Check pipeline status
 gh run list
 
-# Voir les détails d'un run
+# View a run's details
 gh run view <run-id>
 ```
