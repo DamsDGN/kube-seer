@@ -68,11 +68,100 @@ setup_cluster() {
 }
 
 # ------------------------------------------------------------
+install_cert_manager() {
+    log_section "cert-manager ${CERT_MANAGER_VERSION}"
+
+    helm repo add jetstack https://charts.jetstack.io --force-update
+    helm upgrade --install cert-manager jetstack/cert-manager \
+        --namespace "${NAMESPACE_CERT_MANAGER}" \
+        --create-namespace \
+        --version "${CERT_MANAGER_VERSION}" \
+        --set installCRDs=true \
+        --wait \
+        --timeout 120s
+
+    log_info "cert-manager prêt"
+}
+
+# ------------------------------------------------------------
+install_eck() {
+    log_section "ECK Operator ${ECK_VERSION}"
+
+    helm repo add elastic https://helm.elastic.co --force-update
+    helm upgrade --install elastic-operator elastic/eck-operator \
+        --namespace "${NAMESPACE_ELASTIC}" \
+        --create-namespace \
+        --version "${ECK_VERSION}" \
+        --wait \
+        --timeout 120s
+
+    log_info "ECK operator prêt"
+}
+
+# ------------------------------------------------------------
+install_elasticsearch() {
+    log_section "Elasticsearch ${ES_VERSION}"
+
+    kubectl apply -f - <<EOF
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: ${NAMESPACE_ELASTIC}
+spec:
+  version: ${ES_VERSION}
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+EOF
+
+    log_info "Attente qu'Elasticsearch soit green (jusqu'à 5 minutes)..."
+    local attempts=0
+    until kubectl get elasticsearch elasticsearch -n "${NAMESPACE_ELASTIC}" \
+        -o jsonpath='{.status.health}' 2>/dev/null | grep -q "green"; do
+        attempts=$((attempts + 1))
+        if [ "$attempts" -ge 60 ]; then
+            log_error "Timeout : Elasticsearch n'est pas green après 5 minutes"
+            kubectl get elasticsearch -n "${NAMESPACE_ELASTIC}"
+            exit 1
+        fi
+        sleep 5
+    done
+
+    log_info "Elasticsearch green"
+}
+
+# ------------------------------------------------------------
 main() {
     log_section "kube-seer — Setup environnement Kind"
     check_prerequisites
     setup_cluster
-    log_info "Cluster prêt"
+    install_cert_manager
+    install_eck
+    install_elasticsearch
+    log_info "Stack Elasticsearch prête"
 }
 
 main "$@"
