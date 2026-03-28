@@ -45,6 +45,8 @@ class KubernetesApiCollector(StateCollector):
         self._core_api: Optional[client.CoreV1Api] = None
         self._apps_api: Optional[client.AppsV1Api] = None
         self._batch_api: Optional[client.BatchV1Api] = None
+        self._autoscaling_api: Optional[client.AutoscalingV1Api] = None
+        self._networking_api: Optional[client.NetworkingV1Api] = None
 
     async def connect(self) -> None:
         try:
@@ -54,12 +56,16 @@ class KubernetesApiCollector(StateCollector):
         self._core_api = client.CoreV1Api()
         self._apps_api = client.AppsV1Api()
         self._batch_api = client.BatchV1Api()
+        self._autoscaling_api = client.AutoscalingV1Api()
+        self._networking_api = client.NetworkingV1Api()
         logger.info("k8s_api_collector.connected")
 
     async def close(self) -> None:
         self._core_api = None
         self._apps_api = None
         self._batch_api = None
+        self._autoscaling_api = None
+        self._networking_api = None
 
     async def is_healthy(self) -> bool:
         if not self._core_api:
@@ -149,6 +155,11 @@ class KubernetesApiCollector(StateCollector):
         states.extend(await self._collect_daemonsets(namespace, now))
         states.extend(await self._collect_jobs(namespace, now))
         states.extend(await self._collect_cronjobs(namespace, now))
+        states.extend(await self._collect_pvcs(namespace, now))
+        states.extend(await self._collect_hpa(namespace, now))
+        states.extend(await self._collect_networkpolicies(namespace, now))
+        states.extend(await self._collect_quotas(namespace, now))
+        states.extend(await self._collect_ingresses(namespace, now))
 
         return states
 
@@ -304,4 +315,170 @@ class KubernetesApiCollector(StateCollector):
                 timestamp=now,
             )
             for c in result.items
+        ]
+
+    async def _collect_pvcs(self, namespace: str, now: datetime) -> List[ResourceState]:
+        if not self._core_api:
+            return []
+        try:
+            if namespace:
+                result = await asyncio.to_thread(
+                    self._core_api.list_namespaced_persistent_volume_claim, namespace
+                )
+            else:
+                result = await asyncio.to_thread(
+                    self._core_api.list_persistent_volume_claim_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.pvcs_error", error=str(e))
+            return []
+
+        return [
+            ResourceState(
+                kind="PersistentVolumeClaim",
+                name=p.metadata.name,
+                namespace=p.metadata.namespace,
+                conditions={
+                    "status": p.status.phase or "Unknown",
+                    "capacity": (p.spec.resources.requests or {}).get("storage", ""),
+                    "storage_class": p.spec.storage_class_name or "",
+                },
+                timestamp=now,
+            )
+            for p in result.items
+        ]
+
+    async def _collect_hpa(self, namespace: str, now: datetime) -> List[ResourceState]:
+        if not self._autoscaling_api:
+            return []
+        try:
+            if namespace:
+                result = await asyncio.to_thread(
+                    self._autoscaling_api.list_namespaced_horizontal_pod_autoscaler,
+                    namespace,
+                )
+            else:
+                result = await asyncio.to_thread(
+                    self._autoscaling_api.list_horizontal_pod_autoscaler_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.hpa_error", error=str(e))
+            return []
+
+        return [
+            ResourceState(
+                kind="HorizontalPodAutoscaler",
+                name=h.metadata.name,
+                namespace=h.metadata.namespace,
+                desired_replicas=h.spec.max_replicas,
+                ready_replicas=h.status.current_replicas or 0,
+                conditions={
+                    "min_replicas": h.spec.min_replicas or 1,
+                    "max_replicas": h.spec.max_replicas,
+                    "target": f"{h.spec.scale_target_ref.kind}/{h.spec.scale_target_ref.name}",
+                },
+                timestamp=now,
+            )
+            for h in result.items
+        ]
+
+    async def _collect_networkpolicies(
+        self, namespace: str, now: datetime
+    ) -> List[ResourceState]:
+        if not self._networking_api:
+            return []
+        try:
+            if namespace:
+                result = await asyncio.to_thread(
+                    self._networking_api.list_namespaced_network_policy, namespace
+                )
+            else:
+                result = await asyncio.to_thread(
+                    self._networking_api.list_network_policy_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.networkpolicies_error", error=str(e))
+            return []
+
+        return [
+            ResourceState(
+                kind="NetworkPolicy",
+                name=np.metadata.name,
+                namespace=np.metadata.namespace,
+                conditions={
+                    "pod_selector": str(np.spec.pod_selector.match_labels or {}),
+                },
+                timestamp=now,
+            )
+            for np in result.items
+        ]
+
+    async def _collect_quotas(
+        self, namespace: str, now: datetime
+    ) -> List[ResourceState]:
+        if not self._core_api:
+            return []
+        try:
+            if namespace:
+                result = await asyncio.to_thread(
+                    self._core_api.list_namespaced_resource_quota, namespace
+                )
+            else:
+                result = await asyncio.to_thread(
+                    self._core_api.list_resource_quota_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.quotas_error", error=str(e))
+            return []
+
+        states = []
+        for q in result.items:
+            used = q.status.used or {}
+            hard = q.status.hard or {}
+            states.append(
+                ResourceState(
+                    kind="ResourceQuota",
+                    name=q.metadata.name,
+                    namespace=q.metadata.namespace,
+                    conditions={
+                        "cpu_used": used.get("cpu", ""),
+                        "cpu_hard": hard.get("cpu", ""),
+                        "memory_used": used.get("memory", ""),
+                        "memory_hard": hard.get("memory", ""),
+                    },
+                    timestamp=now,
+                )
+            )
+        return states
+
+    async def _collect_ingresses(
+        self, namespace: str, now: datetime
+    ) -> List[ResourceState]:
+        if not self._networking_api:
+            return []
+        try:
+            if namespace:
+                result = await asyncio.to_thread(
+                    self._networking_api.list_namespaced_ingress, namespace
+                )
+            else:
+                result = await asyncio.to_thread(
+                    self._networking_api.list_ingress_for_all_namespaces
+                )
+        except Exception as e:
+            logger.error("k8s_api_collector.ingresses_error", error=str(e))
+            return []
+
+        return [
+            ResourceState(
+                kind="Ingress",
+                name=ing.metadata.name,
+                namespace=ing.metadata.namespace,
+                conditions={
+                    "rules": len(ing.spec.rules or []),
+                    "tls": bool(ing.spec.tls),
+                },
+                timestamp=now,
+            )
+            for ing in result.items
         ]
