@@ -104,22 +104,24 @@ make kind-down          # delete the cluster
 
 ### Helm deployment
 
+The namespace name is free — use whatever fits your environment (`monitoring`, `kube-seer`, `observability`, etc.).
+
 ```bash
 # Minimal install — chart creates the namespace
 helm install kube-seer ./helm/kube-seer \
-  --namespace monitoring \
+  --namespace <your-namespace> \
   --set createNamespace=true \
   --set elasticsearch.url=http://elasticsearch:9200
 
 # Or let Helm create the namespace
 helm install kube-seer ./helm/kube-seer \
-  --namespace monitoring \
+  --namespace <your-namespace> \
   --create-namespace \
   --set elasticsearch.url=http://elasticsearch:9200
 
 # With Elasticsearch authentication (HTTPS + self-signed certificate)
 helm install kube-seer ./helm/kube-seer \
-  --namespace monitoring \
+  --namespace <your-namespace> \
   --create-namespace \
   --set elasticsearch.url=https://elasticsearch:9200 \
   --set elasticsearch.username=elastic \
