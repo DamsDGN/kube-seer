@@ -15,12 +15,6 @@ CERT_MANAGER_VERSION="v1.14.5"
 ECK_VERSION="2.11.1"
 ES_VERSION="8.13.0"
 
-# Elasticsearch index names used by kube-seer.
-# Adjust to match your existing log shipper configuration.
-# Wildcards are supported for logs (e.g. "my-logs-*" for daily indices).
-INDEX_METRICS="sre-metrics"
-INDEX_LOGS="sre-logs"
-INDEX_ANOMALIES="sre-anomalies"
 
 COLOR_GREEN="\033[0;32m"
 COLOR_YELLOW="\033[1;33m"
@@ -194,7 +188,11 @@ install_prometheus() {
 
 # ------------------------------------------------------------
 install_fluent_bit() {
-    log_section "Fluent Bit (log shipper → ${INDEX_LOGS})"
+    # The log index name must match elasticsearch.indices.logs in helm/kube-seer/values.yaml
+    local log_index
+    log_index=$(grep 'logs:' ./helm/kube-seer/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
+
+    log_section "Fluent Bit (log shipper → ${log_index})"
 
     local es_password
     es_password=$(kubectl get secret elasticsearch-es-elastic-user \
@@ -216,14 +214,14 @@ install_fluent_bit() {
     Port              9200
     HTTP_User         elastic
     HTTP_Passwd       ${es_password}
-    Index             ${INDEX_LOGS}
+    Index             ${log_index}
     Suppress_Type_Name On
     tls               On
     tls.verify        Off" \
         --wait \
         --timeout 120s
 
-    log_info "Fluent Bit prêt — logs K8s → ${INDEX_LOGS}"
+    log_info "Fluent Bit prêt — logs K8s → ${log_index}"
 }
 
 # ------------------------------------------------------------
@@ -256,9 +254,6 @@ deploy_kube_seer() {
         --set elasticsearch.username=elastic \
         --set "elasticsearch.password=${es_password}" \
         --set elasticsearch.verifyTls=false \
-        --set elasticsearch.indices.metrics="${INDEX_METRICS}" \
-        --set elasticsearch.indices.logs="${INDEX_LOGS}" \
-        --set elasticsearch.indices.anomalies="${INDEX_ANOMALIES}" \
         --set collectors.prometheus.url="http://kube-prometheus-stack-prometheus.${NAMESPACE_MONITORING}.svc:9090" \
         --set alerter.alertmanager.url="http://kube-prometheus-stack-alertmanager.${NAMESPACE_MONITORING}.svc:9093" \
         --set service.type=NodePort \
