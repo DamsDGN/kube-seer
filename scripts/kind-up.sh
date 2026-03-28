@@ -154,6 +154,92 @@ EOF
 }
 
 # ------------------------------------------------------------
+install_prometheus() {
+    log_section "kube-prometheus-stack"
+
+    helm repo add prometheus-community \
+        https://prometheus-community.github.io/helm-charts --force-update
+
+    helm upgrade --install kube-prometheus-stack \
+        prometheus-community/kube-prometheus-stack \
+        --namespace "${NAMESPACE_MONITORING}" \
+        --create-namespace \
+        --set prometheus.service.type=NodePort \
+        --set prometheus.service.nodePort=30090 \
+        --set grafana.service.type=NodePort \
+        --set grafana.service.nodePort=30300 \
+        --set "alertmanager.service.type=NodePort" \
+        --set "alertmanager.service.nodePort=30093" \
+        --set prometheus.prometheusSpec.resources.requests.cpu=200m \
+        --set prometheus.prometheusSpec.resources.requests.memory=512Mi \
+        --set "prometheus.prometheusSpec.resources.limits.memory=1Gi" \
+        --set grafana.resources.requests.cpu=100m \
+        --set grafana.resources.requests.memory=128Mi \
+        --set "grafana.resources.limits.memory=256Mi" \
+        --set alertmanager.alertmanagerSpec.resources.requests.cpu=50m \
+        --set alertmanager.alertmanagerSpec.resources.requests.memory=64Mi \
+        --set "alertmanager.alertmanagerSpec.resources.limits.memory=128Mi" \
+        --wait \
+        --timeout 300s
+
+    log_info "kube-prometheus-stack prêt"
+}
+
+# ------------------------------------------------------------
+deploy_kube_seer() {
+    log_section "kube-seer"
+
+    # Récupérer le mot de passe Elasticsearch depuis le secret ECK
+    local es_password
+    es_password=$(kubectl get secret elasticsearch-es-elastic-user \
+        -n "${NAMESPACE_ELASTIC}" \
+        -o jsonpath='{.data.elastic}' | base64 -d)
+
+    # Build de l'image locale
+    log_info "Build de l'image kube-seer:local..."
+    docker build -t kube-seer:local . --quiet
+
+    # Chargement dans Kind
+    log_info "Chargement de l'image dans Kind..."
+    kind load docker-image kube-seer:local --name "${CLUSTER_NAME}"
+
+    # Déploiement Helm
+    log_info "Déploiement Helm kube-seer..."
+    helm upgrade --install kube-seer ./helm/kube-seer \
+        --namespace "${NAMESPACE_MONITORING}" \
+        --create-namespace \
+        --set image.repository=kube-seer \
+        --set image.tag=local \
+        --set image.pullPolicy=Never \
+        --set elasticsearch.url="http://elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc:9200" \
+        --set elasticsearch.username=elastic \
+        --set "elasticsearch.password=${es_password}" \
+        --set collectors.prometheus.url="http://kube-prometheus-stack-prometheus.${NAMESPACE_MONITORING}.svc:9090" \
+        --set alerter.alertmanager.url="http://kube-prometheus-stack-alertmanager.${NAMESPACE_MONITORING}.svc:9093" \
+        --set service.type=NodePort \
+        --set service.nodePort=30080 \
+        --wait \
+        --timeout 120s
+
+    log_info "kube-seer déployé"
+}
+
+# ------------------------------------------------------------
+print_summary() {
+    log_section "Environnement prêt"
+    echo ""
+    echo "  kube-seer API   : http://localhost:8080"
+    echo "  Prometheus      : http://localhost:9090"
+    echo "  Grafana         : http://localhost:3000  (admin / prom-operator)"
+    echo "  Alertmanager    : http://localhost:9093"
+    echo ""
+    echo "  kubectl context : kind-${CLUSTER_NAME}"
+    echo ""
+    echo "  Pour supprimer : make kind-down"
+    echo ""
+}
+
+# ------------------------------------------------------------
 main() {
     log_section "kube-seer — Setup environnement Kind"
     check_prerequisites
@@ -161,7 +247,9 @@ main() {
     install_cert_manager
     install_eck
     install_elasticsearch
-    log_info "Stack Elasticsearch prête"
+    install_prometheus
+    deploy_kube_seer
+    print_summary
 }
 
 main "$@"
