@@ -98,7 +98,12 @@ class ElasticsearchStorage(BaseStorage):
         if not self._client:
             return []
         try:
-            result = await self._client.search(index=index, query=query_body, size=size)
+            result = await self._client.search(
+                index=index,
+                query=query_body,
+                size=size,
+                sort=[{"data.timestamp": {"order": "desc", "unmapped_type": "date"}}],
+            )
             return [hit["_source"] for hit in result["hits"]["hits"]]
         except NotFoundError:
             logger.warning("elasticsearch_storage.index_not_found", index=index)

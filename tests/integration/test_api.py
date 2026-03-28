@@ -114,6 +114,31 @@ def test_alerts_stats(api):
     assert data["total_sent"] >= 0
 
 
+def test_anomalies_unknown_severity_ignored(api):
+    """An unknown severity value should be ignored and return all anomalies."""
+    r_all = api.get("/anomalies")
+    r_unknown = api.get("/anomalies", params={"severity": "unknown"})
+    assert r_unknown.status_code == 200
+    assert r_unknown.json()["count"] == r_all.json()["count"]
+
+
+def test_anomalies_nonexistent_namespace_returns_empty(api):
+    """Filtering by a namespace that has no anomalies should return an empty list."""
+    r = api.get("/anomalies", params={"namespace": "this-namespace-does-not-exist"})
+    assert r.status_code == 200
+    assert r.json()["anomalies"] == []
+    assert r.json()["count"] == 0
+
+
+def test_analyze_returns_positive_metrics(api):
+    """After analysis, metrics_analyzed should reflect live cluster pods and nodes."""
+    r = api.post("/analyze")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "completed"
+    assert data["metrics_analyzed"] > 0
+
+
 def test_analyze_trigger(api):
     r = api.post("/analyze")
     assert r.status_code == 200
