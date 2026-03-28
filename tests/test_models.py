@@ -66,6 +66,36 @@ class TestPodMetrics:
         assert pod.cpu_usage_millicores == 250
         assert pod.restart_count == 0
 
+    def test_with_limits(self, sample_timestamp):
+        pod = PodMetrics(
+            pod_name="my-pod",
+            namespace="default",
+            node_name="node-1",
+            cpu_usage_millicores=200,
+            memory_usage_bytes=134217728,
+            restart_count=0,
+            status="Running",
+            cpu_limit_millicores=500,
+            memory_limit_bytes=268435456,
+            timestamp=sample_timestamp,
+        )
+        assert pod.cpu_limit_millicores == 500
+        assert pod.memory_limit_bytes == 268435456
+
+    def test_without_limits(self, sample_timestamp):
+        pod = PodMetrics(
+            pod_name="my-pod",
+            namespace="default",
+            node_name="node-1",
+            cpu_usage_millicores=200,
+            memory_usage_bytes=134217728,
+            restart_count=0,
+            status="Running",
+            timestamp=sample_timestamp,
+        )
+        assert pod.cpu_limit_millicores is None
+        assert pod.memory_limit_bytes is None
+
 
 class TestKubernetesEvent:
     def test_creation(self, sample_timestamp):

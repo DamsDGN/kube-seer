@@ -35,6 +35,9 @@ class Config(BaseModel):
     ml_window_size: int = 100
     ml_anomaly_threshold: float = 0.05
 
+    # Prediction
+    prediction_horizon_hours: int = 168
+
     # Intelligence (optional LLM)
     intelligence_enabled: bool = False
     intelligence_provider: str = ""

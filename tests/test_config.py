@@ -37,6 +37,10 @@ class TestConfigDefaults:
         assert config.alerter_fallback_webhook_enabled is False
         assert config.alerter_fallback_webhook_url == ""
 
+    def test_prediction_horizon_hours_default(self):
+        config = Config(elasticsearch_url="http://localhost:9200")
+        assert config.prediction_horizon_hours == 168
+
 
 class TestConfigValidation:
     def test_elasticsearch_url_required(self):
@@ -76,3 +80,10 @@ class TestConfigValidation:
                 thresholds_disk_warning=95.0,
                 thresholds_disk_critical=90.0,
             )
+
+    def test_prediction_horizon_hours_custom(self):
+        config = Config(
+            elasticsearch_url="http://localhost:9200",
+            prediction_horizon_hours=72,
+        )
+        assert config.prediction_horizon_hours == 72
