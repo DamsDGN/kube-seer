@@ -1,7 +1,7 @@
 import structlog
 from typing import Any, Dict, List, Optional
 
-from elasticsearch import AsyncElasticsearch
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from elasticsearch.helpers import async_bulk
 
 from src.config import Config
@@ -34,6 +34,15 @@ class ElasticsearchStorage(BaseStorage):
             "elasticsearch_storage.connected",
             version=info["version"]["number"],
         )
+
+    async def ensure_indices(self, indices: List[str]) -> None:
+        """Create kube-seer-owned indices if they do not exist."""
+        if not self._client:
+            return
+        for index in indices:
+            if not await self._client.indices.exists(index=index):
+                await self._client.indices.create(index=index)
+                logger.info("elasticsearch_storage.index_created", index=index)
 
     async def close(self) -> None:
         if self._client:
@@ -91,6 +100,9 @@ class ElasticsearchStorage(BaseStorage):
         try:
             result = await self._client.search(index=index, query=query_body, size=size)
             return [hit["_source"] for hit in result["hits"]["hits"]]
+        except NotFoundError:
+            logger.warning("elasticsearch_storage.index_not_found", index=index)
+            return []
         except Exception as e:
             logger.error("elasticsearch_storage.query_error", index=index, error=str(e))
             return []

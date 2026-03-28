@@ -15,6 +15,7 @@ CERT_MANAGER_VERSION="v1.14.5"
 ECK_VERSION="2.11.1"
 ES_VERSION="8.13.0"
 
+
 COLOR_GREEN="\033[0;32m"
 COLOR_YELLOW="\033[1;33m"
 COLOR_RED="\033[0;31m"
@@ -186,6 +187,47 @@ install_prometheus() {
 }
 
 # ------------------------------------------------------------
+install_fluent_bit() {
+    # NOTE: Fluent Bit is installed here for local development only.
+    # In production, clients provision their own log shipper.
+    # The index name is read from values.yaml (elasticsearch.indices.logs)
+    # so Fluent Bit writes to the same index kube-seer is configured to read.
+    local log_index
+    log_index=$(grep 'logs:' ./helm/kube-seer/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
+
+    log_section "Fluent Bit (log shipper → ${log_index})"
+
+    local es_password
+    es_password=$(kubectl get secret elasticsearch-es-elastic-user \
+        -n "${NAMESPACE_ELASTIC}" \
+        -o jsonpath='{.data.elastic}' | base64 -d)
+
+    helm repo add fluent https://fluent.github.io/helm-charts --force-update
+
+    helm upgrade --install fluent-bit fluent/fluent-bit \
+        --namespace "${NAMESPACE_MONITORING}" \
+        --create-namespace \
+        --set resources.requests.cpu=50m \
+        --set resources.requests.memory=64Mi \
+        --set resources.limits.memory=128Mi \
+        --set config.outputs="[OUTPUT]
+    Name              es
+    Match             kube.*
+    Host              elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc
+    Port              9200
+    HTTP_User         elastic
+    HTTP_Passwd       ${es_password}
+    Index             ${log_index}
+    Suppress_Type_Name On
+    tls               On
+    tls.verify        Off" \
+        --wait \
+        --timeout 120s
+
+    log_info "Fluent Bit prêt — logs K8s → ${log_index}"
+}
+
+# ------------------------------------------------------------
 deploy_kube_seer() {
     log_section "kube-seer"
 
@@ -249,6 +291,7 @@ main() {
     install_eck
     install_elasticsearch
     install_prometheus
+    install_fluent_bit
     deploy_kube_seer
     print_summary
 }
