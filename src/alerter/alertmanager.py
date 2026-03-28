@@ -61,7 +61,7 @@ class AlertmanagerClient(BaseAlerter):
         for a in anomalies:
             labels: Dict[str, str] = {
                 "alertname": f"sre_{a.source}_{a.resource_type}",
-                "agent": "efk-sre-agent",
+                "agent": "kube-seer",
                 "severity": SEVERITY_MAP.get(a.severity, "warning"),
                 "source": a.source,
                 "resource_type": a.resource_type,

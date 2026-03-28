@@ -47,7 +47,7 @@ class WebhookAlerter(BaseAlerter):
 
     def _format_payload(self, anomalies: List[Anomaly]) -> Dict[str, Any]:
         return {
-            "agent": "efk-sre-agent",
+            "agent": "kube-seer",
             "anomalies": [a.model_dump() for a in anomalies],
             "count": len(anomalies),
         }

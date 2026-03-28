@@ -56,7 +56,7 @@ class TestAlertmanagerFormat:
         assert len(alerts) == 1
         alert = alerts[0]
         assert alert["labels"]["severity"] == "critical"
-        assert alert["labels"]["agent"] == "efk-sre-agent"
+        assert alert["labels"]["agent"] == "kube-seer"
         assert alert["labels"]["resource_type"] == "node"
         assert alert["labels"]["resource_name"] == "node-1"
         assert "CPU usage critical" in alert["annotations"]["description"]

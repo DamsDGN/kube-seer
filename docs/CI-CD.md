@@ -21,7 +21,7 @@ Pour que le pipeline CI/CD fonctionne correctement, vous devez configurer les se
 - **Secret** : Votre nom d'utilisateur Docker Hub
 
 #### DOCKERHUB_TOKEN
-- **Name** : `DOCKERHUB_TOKEN`  
+- **Name** : `DOCKERHUB_TOKEN`
 - **Secret** : Votre token d'accès Docker Hub
 
 ### Créer un token Docker Hub
@@ -56,7 +56,7 @@ Le pipeline est configuré pour :
 Le pipeline utilise les variables suivantes :
 
 - `REGISTRY` : `docker.io` (Docker Hub)
-- `IMAGE_NAME` : `efk-sre-agent`
+- `IMAGE_NAME` : `kube-seer`
 - `IMAGE_TAG` : Généré automatiquement basé sur le SHA du commit ou le tag
 
 ### Sécurité

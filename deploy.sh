@@ -8,9 +8,9 @@ echo "🚀 Déploiement de l'agent IA SRE EFK avec Kind"
 
 # Variables
 NAMESPACE="monitoring"
-IMAGE_NAME="efk-sre-agent"
+IMAGE_NAME="kube-seer"
 IMAGE_TAG="latest"
-KIND_CLUSTER_NAME="efk-sre-agent"
+KIND_CLUSTER_NAME="kube-seer"
 
 # Fonctions utilitaires
 check_kubectl() {
@@ -38,14 +38,14 @@ check_kind() {
 
 setup_kind_cluster() {
     echo "🔧 Configuration du cluster Kind"
-    
+
     # Vérifier si le cluster existe déjà
     if kind get clusters | grep -q "^$KIND_CLUSTER_NAME$"; then
         echo "✅ Cluster Kind '$KIND_CLUSTER_NAME' existe déjà"
         kubectl cluster-info --context kind-$KIND_CLUSTER_NAME
     else
         echo "🏗️  Création du cluster Kind '$KIND_CLUSTER_NAME'"
-        
+
         # Créer la configuration Kind avec port mapping pour l'API
         cat > kind-config.yaml << EOF
 kind: Cluster
@@ -64,11 +64,11 @@ nodes:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
 EOF
-        
+
         kind create cluster --config kind-config.yaml
         kubectl cluster-info --context kind-$KIND_CLUSTER_NAME
     fi
-    
+
     # S'assurer que le contexte est correct
     kubectl config use-context kind-$KIND_CLUSTER_NAME
 }
@@ -81,7 +81,7 @@ create_namespace() {
 build_image() {
     echo "🏗️  Build de l'image Docker pour Kind"
     docker build -t $IMAGE_NAME:$IMAGE_TAG .
-    
+
     # Charger l'image dans Kind
     echo "� Chargement de l'image dans le cluster Kind"
     kind load docker-image $IMAGE_NAME:$IMAGE_TAG --name $KIND_CLUSTER_NAME
@@ -89,12 +89,12 @@ build_image() {
 
 configure_secrets() {
     echo "🔐 Configuration des secrets"
-    
+
     # Vérifier si le fichier .env existe
     if [ ! -f .env ]; then
         echo "⚠️  Fichier .env non trouvé"
         echo "📝 Création d'un fichier .env minimal pour les tests"
-        
+
         cat > .env << EOF
 # Configuration pour tests locaux avec Kind
 ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -117,12 +117,12 @@ EOF
         echo "✅ Fichier .env créé avec des valeurs par défaut"
         echo "⚠️  ATTENTION: Modifiez .env avec vos vraies valeurs avant la production!"
     fi
-    
+
     # Charger les variables d'environnement
     source .env
-    
+
     # Créer ou mettre à jour le secret avec des valeurs par défaut sécurisées
-    kubectl create secret generic efk-sre-agent-secrets \
+    kubectl create secret generic kube-seer-secrets \
         --from-literal=ELASTICSEARCH_PASSWORD="${ELASTICSEARCH_PASSWORD:-changeme}" \
         --from-literal=WEBHOOK_URL="${WEBHOOK_URL:-}" \
         --from-literal=SLACK_WEBHOOK="${SLACK_WEBHOOK:-}" \
@@ -141,18 +141,18 @@ deploy_agent() {
 
 wait_for_deployment() {
     echo "⏳ Attente du déploiement..."
-    kubectl rollout status deployment/efk-sre-agent -n $NAMESPACE --timeout=300s
+    kubectl rollout status deployment/kube-seer -n $NAMESPACE --timeout=300s
 }
 
 show_status() {
     echo "📊 Statut du déploiement:"
-    kubectl get pods -n $NAMESPACE -l app=efk-sre-agent
+    kubectl get pods -n $NAMESPACE -l app=kube-seer
     echo ""
     echo "🌐 Service:"
-    kubectl get svc -n $NAMESPACE efk-sre-agent
+    kubectl get svc -n $NAMESPACE kube-seer
     echo ""
     echo "📈 Pour accéder à l'API depuis l'extérieur du cluster:"
-    echo "kubectl port-forward -n $NAMESPACE svc/efk-sre-agent 8080:8080"
+    echo "kubectl port-forward -n $NAMESPACE svc/kube-seer 8080:8080"
     echo "Puis ouvrir: http://localhost:8080/health"
     echo ""
     echo "🔗 Avec Kind, l'API est aussi accessible via: http://localhost:8080 (si NodePort configuré)"
@@ -166,14 +166,14 @@ cleanup_kind() {
 
 show_logs() {
     echo "📝 Logs de l'agent:"
-    kubectl logs -n $NAMESPACE -l app=efk-sre-agent --tail=50 -f
+    kubectl logs -n $NAMESPACE -l app=kube-seer --tail=50 -f
 }
 
 cleanup() {
     echo "🧹 Nettoyage des ressources"
     kubectl delete -f k8s/deployment.yaml --ignore-not-found=true
     kubectl delete -f k8s/monitoring.yaml --ignore-not-found=true
-    kubectl delete secret efk-sre-agent-secrets -n $NAMESPACE --ignore-not-found=true
+    kubectl delete secret kube-seer-secrets -n $NAMESPACE --ignore-not-found=true
 }
 
 # Menu principal
@@ -217,7 +217,7 @@ case "${1:-deploy}" in
         check_docker
         check_kind
         build_image
-        kubectl set image deployment/efk-sre-agent efk-sre-agent=$IMAGE_NAME:$IMAGE_TAG -n $NAMESPACE
+        kubectl set image deployment/kube-seer kube-seer=$IMAGE_NAME:$IMAGE_TAG -n $NAMESPACE
         wait_for_deployment
         show_status
         ;;
@@ -239,16 +239,16 @@ case "${1:-deploy}" in
         ;;
     "test")
         echo "🧪 Test de l'API"
-        kubectl port-forward -n $NAMESPACE svc/efk-sre-agent 8080:8080 &
+        kubectl port-forward -n $NAMESPACE svc/kube-seer 8080:8080 &
         PORT_FORWARD_PID=$!
         sleep 5
-        
+
         echo "Test de santé:"
         curl -s http://localhost:8080/health | jq . || curl -s http://localhost:8080/health
-        
+
         echo -e "\nTest de statut:"
         curl -s http://localhost:8080/status | jq . || curl -s http://localhost:8080/status
-        
+
         kill $PORT_FORWARD_PID
         ;;
     *)

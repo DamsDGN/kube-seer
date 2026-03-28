@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "efk-sre-agent.name" -}}
+{{- define "kube-seer.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "efk-sre-agent.fullname" -}}
+{{- define "kube-seer.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "efk-sre-agent.chart" -}}
+{{- define "kube-seer.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "efk-sre-agent.labels" -}}
-helm.sh/chart: {{ include "efk-sre-agent.chart" . }}
-{{ include "efk-sre-agent.selectorLabels" . }}
+{{- define "kube-seer.labels" -}}
+helm.sh/chart: {{ include "kube-seer.chart" . }}
+{{ include "kube-seer.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,17 +43,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "efk-sre-agent.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "efk-sre-agent.name" . }}
+{{- define "kube-seer.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "kube-seer.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "efk-sre-agent.serviceAccountName" -}}
+{{- define "kube-seer.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "efk-sre-agent.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "kube-seer.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

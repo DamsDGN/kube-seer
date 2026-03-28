@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "efk-sre-agent.selectorLabels" . | nindent 4 }}
+    {{- include "kube-seer.selectorLabels" . | nindent 4 }}

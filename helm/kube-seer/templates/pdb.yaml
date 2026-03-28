@@ -2,12 +2,12 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "efk-sre-agent.fullname" . }}
+  name: {{ include "kube-seer.fullname" . }}
   labels:
-    {{- include "efk-sre-agent.labels" . | nindent 4 }}
+    {{- include "kube-seer.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
-      {{- include "efk-sre-agent.selectorLabels" . | nindent 6 }}
+      {{- include "kube-seer.selectorLabels" . | nindent 6 }}
 {{- end }}
