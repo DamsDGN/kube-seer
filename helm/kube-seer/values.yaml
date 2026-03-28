@@ -1,3 +1,7 @@
+# Set to true to have the chart create the namespace.
+# Alternatively, use: helm install --create-namespace -n <namespace>
+createNamespace: false
+
 # Agent
 agent:
   analysisInterval: 300
