@@ -110,10 +110,6 @@ metadata:
   namespace: ${NAMESPACE_ELASTIC}
 spec:
   version: ${ES_VERSION}
-  http:
-    tls:
-      selfSignedCertificate:
-        disabled: true
   nodeSets:
   - name: default
     count: 1
@@ -215,9 +211,10 @@ deploy_kube_seer() {
         --set image.repository=kube-seer \
         --set image.tag=local \
         --set image.pullPolicy=Never \
-        --set elasticsearch.url="http://elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc:9200" \
+        --set elasticsearch.url="https://elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc:9200" \
         --set elasticsearch.username=elastic \
         --set "elasticsearch.password=${es_password}" \
+        --set elasticsearch.verifyTls=false \
         --set collectors.prometheus.url="http://kube-prometheus-stack-prometheus.${NAMESPACE_MONITORING}.svc:9090" \
         --set alerter.alertmanager.url="http://kube-prometheus-stack-alertmanager.${NAMESPACE_MONITORING}.svc:9093" \
         --set service.type=NodePort \

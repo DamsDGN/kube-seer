@@ -9,6 +9,7 @@ elasticsearch:
   username: ""
   password: ""
   secretRef: ""
+  verifyTls: true
   indices:
     metrics: "sre-metrics"
     logs: "sre-logs"
