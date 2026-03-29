@@ -189,10 +189,7 @@ install_prometheus() {
 
 # ------------------------------------------------------------
 install_fluent_bit() {
-    # NOTE: Fluent Bit is installed here for local development only.
-    # In production, clients provision their own log shipper.
-    # The index name is read from values.yaml (elasticsearch.indices.logs)
-    # so Fluent Bit writes to the same index kube-seer is configured to read.
+    # Local environment only — ships app pod logs to Elasticsearch.
     local log_index
     log_index=$(grep 'logs:' ./helm/kube-seer/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
 
@@ -208,20 +205,13 @@ install_fluent_bit() {
     helm upgrade --install fluent-bit fluent/fluent-bit \
         --namespace "${NAMESPACE_MONITORING}" \
         --create-namespace \
-        --set resources.requests.cpu=50m \
-        --set resources.requests.memory=64Mi \
-        --set resources.limits.memory=128Mi \
-        --set config.outputs="[OUTPUT]
-    Name              es
-    Match             kube.*
-    Host              elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc
-    Port              9200
-    HTTP_User         elastic
-    HTTP_Passwd       ${es_password}
-    Index             ${log_index}
-    Suppress_Type_Name On
-    tls               On
-    tls.verify        Off" \
+        --values scripts/fluentbit-values.yaml \
+        --set "env[0].name=ES_HOST" \
+        --set "env[0].value=elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc" \
+        --set "env[1].name=ES_PASSWORD" \
+        --set "env[1].value=${es_password}" \
+        --set "env[2].name=ES_LOG_INDEX" \
+        --set "env[2].value=${log_index}" \
         --wait \
         --timeout 120s
 
