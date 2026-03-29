@@ -29,7 +29,7 @@ config:
     [FILTER]
         Name    grep
         Match   kube.*
-        Exclude $kubernetes['namespace_name'] ^(kube-system|kube-public|elastic-system|monitoring|cert-manager|local-path-storage)$
+        Exclude $kubernetes['namespace_name'] ^(kube-system|kube-public|elastic-system|cert-manager|local-path-storage)$
 
   outputs: |
     [OUTPUT]
