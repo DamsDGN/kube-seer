@@ -192,13 +192,20 @@ install_fluent_bit() {
     # Local environment only — ships app pod logs to Elasticsearch.
     local log_index
     log_index=$(grep 'logs:' ./helm/kube-seer/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
+    if [ -z "$log_index" ]; then
+        log_error "Could not extract ES log index from values.yaml"
+        exit 1
+    fi
 
     log_section "Fluent Bit (log shipper → ${log_index})"
 
     local es_password
     es_password=$(kubectl get secret elasticsearch-es-elastic-user \
         -n "${NAMESPACE_ELASTIC}" \
-        -o jsonpath='{.data.elastic}' | base64 -d)
+        -o jsonpath='{.data.elastic}' | base64 -d) || {
+        log_error "Failed to retrieve Elasticsearch password"
+        exit 1
+    }
 
     helm repo add fluent https://fluent.github.io/helm-charts --force-update
 
