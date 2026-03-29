@@ -362,6 +362,337 @@ class TestCheckQuota:
         assert anomalies == []
 
 
+# ── Nodes ─────────────────────────────────────────────────────────────────────
+
+
+class TestCheckNode:
+    @pytest.mark.asyncio
+    async def test_healthy_node_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={
+                "ready": True,
+                "memory_pressure": False,
+                "disk_pressure": False,
+                "pid_pressure": False,
+                "unschedulable": False,
+            },
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_notready_is_critical(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={"ready": False},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert any(a.severity == Severity.CRITICAL for a in anomalies)
+        assert any("NotReady" in a.description for a in anomalies)
+
+    @pytest.mark.asyncio
+    async def test_memory_pressure_is_critical(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={"ready": True, "memory_pressure": True},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert any(
+            a.severity == Severity.CRITICAL and "MemoryPressure" in a.description
+            for a in anomalies
+        )
+
+    @pytest.mark.asyncio
+    async def test_disk_pressure_is_critical(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={"ready": True, "disk_pressure": True},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert any(
+            a.severity == Severity.CRITICAL and "DiskPressure" in a.description
+            for a in anomalies
+        )
+
+    @pytest.mark.asyncio
+    async def test_pid_pressure_is_warning(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={"ready": True, "pid_pressure": True},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert any(
+            a.severity == Severity.WARNING and "PIDPressure" in a.description
+            for a in anomalies
+        )
+
+    @pytest.mark.asyncio
+    async def test_unschedulable_is_warning(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={"ready": True, "unschedulable": True},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert any(
+            a.severity == Severity.WARNING and "unschedulable" in a.description
+            for a in anomalies
+        )
+
+    @pytest.mark.asyncio
+    async def test_multiple_conditions_produces_multiple_anomalies(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={
+                "ready": False,
+                "memory_pressure": True,
+                "disk_pressure": True,
+            },
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert len(anomalies) == 3
+
+    @pytest.mark.asyncio
+    async def test_empty_conditions_healthy(self, analyzer):
+        # ready defaults to True via .get("ready", True)
+        rs = _make_rs("Node", name="node-1", namespace="", conditions={})
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_resource_type_is_node(self, analyzer):
+        rs = _make_rs(
+            "Node",
+            name="node-1",
+            namespace="",
+            conditions={"ready": False},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies[0].resource_type == "node"
+
+
+# ── Services ──────────────────────────────────────────────────────────────────
+
+
+class TestCheckService:
+    @pytest.mark.asyncio
+    async def test_service_with_endpoints_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "Service",
+            conditions={"ready_endpoints": 3, "service_type": "ClusterIP"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_zero_endpoints_is_critical(self, analyzer):
+        rs = _make_rs(
+            "Service",
+            conditions={"ready_endpoints": 0, "service_type": "ClusterIP"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert len(anomalies) == 1
+        assert anomalies[0].severity == Severity.CRITICAL
+        assert "0 ready endpoints" in anomalies[0].description
+
+    @pytest.mark.asyncio
+    async def test_missing_ready_endpoints_no_anomaly(self, analyzer):
+        # -1 sentinel (no selector) → skip
+        rs = _make_rs("Service", conditions={"ready_endpoints": -1})
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_description_includes_namespace_and_name(self, analyzer):
+        rs = _make_rs(
+            "Service",
+            name="my-svc",
+            namespace="production",
+            conditions={"ready_endpoints": 0},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert "production/my-svc" in anomalies[0].description
+
+
+# ── PodDisruptionBudgets ──────────────────────────────────────────────────────
+
+
+class TestCheckPDB:
+    @pytest.mark.asyncio
+    async def test_healthy_pdb_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "PodDisruptionBudget",
+            conditions={
+                "current_healthy": 3,
+                "desired_healthy": 2,
+                "disruptions_allowed": 1,
+            },
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_violated_pdb_is_critical(self, analyzer):
+        rs = _make_rs(
+            "PodDisruptionBudget",
+            conditions={
+                "current_healthy": 1,
+                "desired_healthy": 3,
+                "disruptions_allowed": 0,
+            },
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert len(anomalies) == 1
+        assert anomalies[0].severity == Severity.CRITICAL
+        assert "1/3" in anomalies[0].description
+
+    @pytest.mark.asyncio
+    async def test_disruptions_allowed_shown_in_description(self, analyzer):
+        rs = _make_rs(
+            "PodDisruptionBudget",
+            conditions={
+                "current_healthy": 0,
+                "desired_healthy": 2,
+                "disruptions_allowed": 0,
+            },
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert "disruptions_allowed=0" in anomalies[0].description
+
+    @pytest.mark.asyncio
+    async def test_zero_desired_skipped(self, analyzer):
+        rs = _make_rs(
+            "PodDisruptionBudget",
+            conditions={"current_healthy": 0, "desired_healthy": 0},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_missing_conditions_skipped(self, analyzer):
+        rs = _make_rs("PodDisruptionBudget", conditions={})
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+
+# ── PersistentVolumes ─────────────────────────────────────────────────────────
+
+
+class TestCheckPV:
+    @pytest.mark.asyncio
+    async def test_bound_pv_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "PersistentVolume",
+            name="pv-001",
+            namespace="",
+            conditions={"phase": "Bound", "capacity": "10Gi"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_available_pv_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "PersistentVolume",
+            name="pv-001",
+            namespace="",
+            conditions={"phase": "Available"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_failed_pv_is_critical(self, analyzer):
+        rs = _make_rs(
+            "PersistentVolume",
+            name="pv-001",
+            namespace="",
+            conditions={"phase": "Failed", "claim_ref": "default/my-pvc"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert len(anomalies) == 1
+        assert anomalies[0].severity == Severity.CRITICAL
+        assert "Failed" in anomalies[0].description
+        assert "default/my-pvc" in anomalies[0].description
+
+    @pytest.mark.asyncio
+    async def test_released_pv_is_warning(self, analyzer):
+        rs = _make_rs(
+            "PersistentVolume",
+            name="pv-001",
+            namespace="",
+            conditions={
+                "phase": "Released",
+                "capacity": "50Gi",
+                "reclaim_policy": "Retain",
+            },
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert len(anomalies) == 1
+        assert anomalies[0].severity == Severity.WARNING
+        assert "Released" in anomalies[0].description
+        assert "50Gi" in anomalies[0].description
+        assert "Retain" in anomalies[0].description
+
+    @pytest.mark.asyncio
+    async def test_unknown_phase_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "PersistentVolume",
+            name="pv-001",
+            namespace="",
+            conditions={"phase": "Pending"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+
+# ── Namespaces ────────────────────────────────────────────────────────────────
+
+
+class TestCheckNamespace:
+    @pytest.mark.asyncio
+    async def test_active_namespace_no_anomaly(self, analyzer):
+        rs = _make_rs(
+            "Namespace", name="production", namespace="", conditions={"phase": "Active"}
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+    @pytest.mark.asyncio
+    async def test_terminating_namespace_is_critical(self, analyzer):
+        rs = _make_rs(
+            "Namespace",
+            name="stuck-ns",
+            namespace="",
+            conditions={"phase": "Terminating"},
+        )
+        anomalies = await analyzer.analyze([rs])
+        assert len(anomalies) == 1
+        assert anomalies[0].severity == Severity.CRITICAL
+        assert "Terminating" in anomalies[0].description
+        assert "stuck-ns" in anomalies[0].description
+
+    @pytest.mark.asyncio
+    async def test_empty_conditions_no_anomaly(self, analyzer):
+        rs = _make_rs("Namespace", name="default", namespace="", conditions={})
+        anomalies = await analyzer.analyze([rs])
+        assert anomalies == []
+
+
 # ── Unknown kinds are ignored ─────────────────────────────────────────────────
 
 

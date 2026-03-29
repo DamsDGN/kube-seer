@@ -202,3 +202,65 @@ def test_unbound_pvc_detected(api, k8s, test_namespace):
     assert any(
         s == 1 for s in severities
     ), f"Expected WARNING severity. Got: {severities}"
+
+
+def test_cordoned_node_detected(api, k8s, test_namespace):
+    """A cordoned node should be detected as unschedulable (WARNING)."""
+    core_v1, apps_v1 = k8s
+    # pick any node
+    nodes = core_v1.list_node()
+    assert nodes.items, "No nodes found in the cluster"
+    node_name = nodes.items[0].metadata.name
+
+    core_v1.patch_node(node_name, {"spec": {"unschedulable": True}})
+    try:
+        _analyze_and_get_resource_anomalies(api, test_namespace)
+        # node anomalies are cluster-scoped (namespace=""), query without filter
+        r = api.get("/anomalies", params={"limit": 100})
+        all_anomalies = [
+            a
+            for a in r.json()["anomalies"]
+            if a["data"]["source"] == "resources"
+            and a["data"]["resource_type"] == "node"
+            and a["data"]["resource_name"] == node_name
+        ]
+        descs = [a["data"]["description"] for a in all_anomalies]
+        assert any(
+            "unschedulable" in d.lower() or "cordoned" in d.lower() for d in descs
+        ), f"No unschedulable anomaly for node {node_name}. Got: {descs}"
+        severities = [a["data"]["severity"] for a in all_anomalies]
+        assert any(s == 1 for s in severities), f"Expected WARNING. Got: {severities}"
+    finally:
+        core_v1.patch_node(node_name, {"spec": {"unschedulable": False}})
+
+
+def test_service_without_endpoints_detected(api, k8s, test_namespace):
+    """A Service with a selector matching no pods should be detected (CRITICAL)."""
+    core_v1, apps_v1 = k8s
+    name = "rs-test-dead-svc"
+
+    core_v1.create_namespaced_service(
+        namespace=test_namespace,
+        body=k8s_client.V1Service(
+            metadata=k8s_client.V1ObjectMeta(name=name, namespace=test_namespace),
+            spec=k8s_client.V1ServiceSpec(
+                selector={"app": "this-pod-does-not-exist"},
+                ports=[k8s_client.V1ServicePort(port=80, target_port=80)],
+            ),
+        ),
+    )
+
+    anomalies = _analyze_and_get_resource_anomalies(api, test_namespace)
+    svc_anomalies = [
+        a
+        for a in anomalies
+        if a["data"]["resource_name"] == name
+        and a["data"]["resource_type"] == "service"
+    ]
+    descs = [a["data"]["description"] for a in svc_anomalies]
+    assert any(
+        "0 ready endpoints" in d for d in descs
+    ), f"No dead-service anomaly for {name}. Got: {descs}"
+
+    severities = [a["data"]["severity"] for a in svc_anomalies]
+    assert any(s == 2 for s in severities), f"Expected CRITICAL. Got: {severities}"
