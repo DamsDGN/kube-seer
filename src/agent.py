@@ -8,6 +8,7 @@ from src.analyzer.correlator import Correlator
 from src.analyzer.predictor import Predictor
 from src.analyzer.events import EventAnalyzer
 from src.analyzer.logs import LogAnalyzer
+from src.analyzer.log_insights import LogInsightAnalyzer
 from src.analyzer.metrics import MetricsAnalyzer
 from src.analyzer.resources import ResourceStateAnalyzer
 from src.collector.k8s_api import KubernetesApiCollector
@@ -50,6 +51,7 @@ class SREAgent:
         self._metrics_analyzer = MetricsAnalyzer(config)
         self._event_analyzer = EventAnalyzer(config)
         self._log_analyzer = LogAnalyzer(config, self._storage)
+        self._log_insight_analyzer = LogInsightAnalyzer(config, self._storage)
         self._resource_analyzer = ResourceStateAnalyzer(config)
         self._correlator = Correlator(config)
         self._predictor = Predictor(config)
@@ -211,6 +213,12 @@ class SREAgent:
             logger.error("agent.log_analysis_error", error=str(e))
 
         try:
+            insight_anomalies = await self._log_insight_analyzer.analyze()
+            anomalies.extend(insight_anomalies)
+        except Exception as e:
+            logger.error("agent.log_insight_analysis_error", error=str(e))
+
+        try:
             resource_anomalies = await self._resource_analyzer.analyze(
                 resource_states=data.resource_states,
             )
@@ -285,6 +293,10 @@ class SREAgent:
             await self._log_analyzer.update_model()
         except Exception as e:
             logger.error("agent.log_model_update_error", error=str(e))
+        try:
+            await self._log_insight_analyzer.update_model()
+        except Exception as e:
+            logger.error("agent.log_insight_model_update_error", error=str(e))
         try:
             await self._predictor.update(
                 node_metrics=data.node_metrics,
