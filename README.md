@@ -118,6 +118,23 @@ docs/superpowers/         # Design specs and implementation plans
 - Docker + Kind (for local testing)
 - Helm 3.x
 
+### External dependencies
+
+kube-seer relies on the following infrastructure components — it does not deploy them itself:
+
+| Component | Role | Required |
+|---|---|---|
+| **Elasticsearch 8.x** | Stores metrics, anomalies, and logs | Yes |
+| **Prometheus** | Node and pod metrics collection | Recommended (falls back to Metrics Server) |
+| **Kubernetes Metrics Server** | Pod/node resource usage | Recommended |
+| **Alertmanager** | Alert routing (primary channel) | Yes, for alerting |
+| **Prometheus Operator** | Provides the `AlertmanagerConfig` CRD used for Slack routing | Yes, if `alerter.slack.enabled=true` |
+| **Fluent Bit** | Ships container logs to Elasticsearch (`sre-logs`) | Yes, for log analysis features |
+
+> **Slack alerting** requires both Alertmanager and Prometheus Operator. The Helm chart creates an `AlertmanagerConfig` resource (a Prometheus Operator CRD) that routes `agent=kube-seer` alerts to your Slack channel. Without Prometheus Operator, set `alerter.slack.enabled=false` and configure your webhook directly in Alertmanager.
+
+> **Log features** (`logs` and `logs_ml` anomaly sources) require Fluent Bit (or any compatible log shipper) to populate the `sre-logs` Elasticsearch index. Without logs, kube-seer still operates on metrics and resource states.
+
 ### Local development
 
 ```bash
