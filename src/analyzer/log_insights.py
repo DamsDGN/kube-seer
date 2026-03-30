@@ -78,7 +78,7 @@ class LogInsightAnalyzer(BaseAnalyzer):
         aggs = {
             "by_app": {
                 "terms": {
-                    "field": "kubernetes.labels.app.keyword",
+                    "field": "kubernetes.labels.app.kubernetes.io/name.keyword",
                     "size": 20,
                     "missing": "__unknown__",
                 }
