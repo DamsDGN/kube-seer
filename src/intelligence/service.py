@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Set
+from typing import Optional
 
 import httpx
 import structlog
@@ -53,7 +53,7 @@ class IntelligenceService:
         self._config = config
         self._storage = storage
         self._provider: Optional[BaseLLMProvider] = None
-        self._last_anomaly_ids: Set[str] = set()
+        self._last_fingerprint: frozenset = frozenset()
         self._last_insight: Optional[LLMInsight] = None
 
         if config.intelligence_enabled and config.intelligence_provider:
@@ -87,10 +87,13 @@ class IntelligenceService:
     def _should_call_llm(self, result: AnalysisResult) -> bool:
         if not result.anomalies:
             return False
-        current_ids = {a.anomaly_id for a in result.anomalies}
-        if current_ids == self._last_anomaly_ids:
+        fingerprint = frozenset(
+            (a.source, a.resource_type, a.resource_name, a.namespace, a.severity)
+            for a in result.anomalies
+        )
+        if fingerprint == self._last_fingerprint:
             return False
-        self._last_anomaly_ids = current_ids
+        self._last_fingerprint = fingerprint
         return True
 
     async def run(self, result: AnalysisResult) -> Optional[LLMInsight]:
