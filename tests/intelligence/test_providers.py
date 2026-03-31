@@ -56,3 +56,40 @@ class TestOpenAIProvider:
             call_kwargs = mock_client.post.call_args
             headers = call_kwargs.kwargs.get("headers", {})
             assert headers.get("Authorization") == "Bearer sk-test"
+
+
+class TestAnthropicProvider:
+    def _make(self, api_key="sk-ant-test", model="claude-sonnet-4-6"):
+        from src.intelligence.providers.anthropic import AnthropicProvider
+
+        return AnthropicProvider(api_key=api_key, model=model)
+
+    @pytest.mark.asyncio
+    async def test_complete_returns_content(self):
+        provider = self._make()
+        mock_message = MagicMock()
+        mock_message.content = [MagicMock(text='{"summary": "ok"}')]
+
+        with patch("anthropic.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_cls.return_value = mock_client
+            mock_client.messages.create = AsyncMock(return_value=mock_message)
+            result = await provider.complete("system prompt", "user prompt")
+
+        assert result == '{"summary": "ok"}'
+
+    @pytest.mark.asyncio
+    async def test_passes_system_and_user(self):
+        provider = self._make()
+        mock_message = MagicMock()
+        mock_message.content = [MagicMock(text="response")]
+
+        with patch("anthropic.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_cls.return_value = mock_client
+            mock_client.messages.create = AsyncMock(return_value=mock_message)
+            await provider.complete("my system", "my user")
+            call_kwargs = mock_client.messages.create.call_args.kwargs
+            assert call_kwargs["system"] == "my system"
+            assert call_kwargs["messages"] == [{"role": "user", "content": "my user"}]
+            assert call_kwargs["model"] == "claude-sonnet-4-6"
