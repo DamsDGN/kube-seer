@@ -49,6 +49,7 @@ class Config(BaseModel):
     intelligence_api_key: str = ""
     intelligence_api_key_secret_ref: str = ""
     intelligence_model: str = ""
+    intelligence_timeout_seconds: int = 60
 
     # Alerter
     alerter_alertmanager_enabled: bool = True

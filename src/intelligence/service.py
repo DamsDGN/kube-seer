@@ -69,6 +69,7 @@ class IntelligenceService:
                 api_url=api_url,
                 api_key=self._config.intelligence_api_key,
                 model=self._config.intelligence_model,
+                timeout=float(self._config.intelligence_timeout_seconds),
             )
         if name == "anthropic":
             from src.intelligence.providers.anthropic import AnthropicProvider

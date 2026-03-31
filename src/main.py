@@ -76,6 +76,9 @@ async def main() -> None:
         intelligence_api_url=os.getenv("INTELLIGENCE_API_URL", ""),
         intelligence_api_key=os.getenv("INTELLIGENCE_API_KEY", ""),
         intelligence_model=os.getenv("INTELLIGENCE_MODEL", ""),
+        intelligence_timeout_seconds=int(
+            os.getenv("INTELLIGENCE_TIMEOUT_SECONDS", "60")
+        ),
         alerter_alertmanager_enabled=_bool("ALERTER_ALERTMANAGER_ENABLED", "true"),
         alerter_alertmanager_url=os.getenv(
             "ALERTER_ALERTMANAGER_URL", "http://alertmanager:9093"

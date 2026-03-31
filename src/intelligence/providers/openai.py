@@ -9,10 +9,13 @@ logger = structlog.get_logger()
 class OpenAIProvider(BaseLLMProvider):
     """OpenAI-compatible provider. Works with Ollama, OpenAI, Mistral, vLLM, LM Studio."""
 
-    def __init__(self, api_url: str, api_key: str, model: str) -> None:
+    def __init__(
+        self, api_url: str, api_key: str, model: str, timeout: float = 60.0
+    ) -> None:
         self._api_url = api_url.rstrip("/")
         self._api_key = api_key
         self._model = model
+        self._timeout = timeout
 
     async def complete(self, system: str, user: str) -> str:
         headers: dict = {"Content-Type": "application/json"}
@@ -28,7 +31,7 @@ class OpenAIProvider(BaseLLMProvider):
             "temperature": 0.2,
         }
 
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(
                 f"{self._api_url}/v1/chat/completions",
                 json=payload,

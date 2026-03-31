@@ -32,6 +32,7 @@ data:
   INTELLIGENCE_API_URL: {{ .Values.intelligence.apiUrl | quote }}
   INTELLIGENCE_API_KEY: {{ .Values.intelligence.apiKey | quote }}
   INTELLIGENCE_MODEL: {{ .Values.intelligence.model | quote }}
+  INTELLIGENCE_TIMEOUT_SECONDS: {{ .Values.intelligence.timeoutSeconds | quote }}
   ALERTER_ALERTMANAGER_ENABLED: {{ .Values.alerter.alertmanager.enabled | quote }}
   ALERTER_ALERTMANAGER_URL: {{ .Values.alerter.alertmanager.url | quote }}
   ALERTER_FALLBACK_WEBHOOK_ENABLED: {{ .Values.alerter.fallback.webhook.enabled | quote }}
