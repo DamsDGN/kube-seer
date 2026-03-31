@@ -188,6 +188,20 @@ install_prometheus() {
 }
 
 # ------------------------------------------------------------
+install_metrics_server() {
+    log_section "metrics-server"
+
+    helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update
+    helm upgrade --install metrics-server metrics-server/metrics-server \
+        --namespace kube-system \
+        --set args="{--kubelet-insecure-tls}" \
+        --wait \
+        --timeout 120s
+
+    log_info "metrics-server prêt"
+}
+
+# ------------------------------------------------------------
 install_fluent_bit() {
     # Local environment only — ships app pod logs to Elasticsearch.
     local log_index
@@ -289,6 +303,7 @@ main() {
     install_eck
     install_elasticsearch
     install_prometheus
+    install_metrics_server
     install_fluent_bit
     deploy_kube_seer
     print_summary
