@@ -30,11 +30,14 @@ data:
   INTELLIGENCE_ENABLED: {{ .Values.intelligence.enabled | quote }}
   INTELLIGENCE_PROVIDER: {{ .Values.intelligence.provider | quote }}
   INTELLIGENCE_API_URL: {{ .Values.intelligence.apiUrl | quote }}
+  INTELLIGENCE_API_KEY: {{ .Values.intelligence.apiKey | quote }}
   INTELLIGENCE_MODEL: {{ .Values.intelligence.model | quote }}
   ALERTER_ALERTMANAGER_ENABLED: {{ .Values.alerter.alertmanager.enabled | quote }}
   ALERTER_ALERTMANAGER_URL: {{ .Values.alerter.alertmanager.url | quote }}
   ALERTER_FALLBACK_WEBHOOK_ENABLED: {{ .Values.alerter.fallback.webhook.enabled | quote }}
   ALERTER_FALLBACK_WEBHOOK_URL: {{ .Values.alerter.fallback.webhook.url | quote }}
+  ALERTER_SLACK_WEBHOOK_URL: {{ .Values.alerter.slack.webhookUrl | quote }}
+  ELASTICSEARCH_INDICES_INSIGHTS: {{ .Values.elasticsearch.indices.insights | quote }}
   EXCLUSIONS_NAMESPACES: {{ .Values.exclusions.namespaces | join "," | quote }}
   EXCLUSIONS_DEPLOYMENTS: {{ .Values.exclusions.deployments | join "," | quote }}
   EXCLUSIONS_STATEFULSETS: {{ .Values.exclusions.statefulsets | join "," | quote }}

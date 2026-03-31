@@ -84,6 +84,10 @@ async def main() -> None:
             "ALERTER_FALLBACK_WEBHOOK_ENABLED", "false"
         ),
         alerter_fallback_webhook_url=os.getenv("ALERTER_FALLBACK_WEBHOOK_URL", ""),
+        alerter_slack_webhook_url=os.getenv("ALERTER_SLACK_WEBHOOK_URL", ""),
+        elasticsearch_indices_insights=os.getenv(
+            "ELASTICSEARCH_INDICES_INSIGHTS", "sre-insights"
+        ),
         exclusions_namespaces=_csv("EXCLUSIONS_NAMESPACES"),
         exclusions_deployments=_csv("EXCLUSIONS_DEPLOYMENTS"),
         exclusions_statefulsets=_csv("EXCLUSIONS_STATEFULSETS"),
