@@ -70,9 +70,8 @@ intelligence:
   apiUrl: ""
   apiKey: ""
   apiKeySecretRef: ""
-  # Ollama: llama3.2  |  OpenAI: gpt-4o  |  Anthropic: claude-sonnet-4-6
   model: ""
-  # LLM request timeout in seconds. Increase for local CPU inference (e.g. 300 for Ollama on CPU).
+  # LLM request timeout in seconds (if needed).
   timeoutSeconds: 60
 
 # Alerting
