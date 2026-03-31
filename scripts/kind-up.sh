@@ -180,6 +180,7 @@ install_prometheus() {
         --set alertmanager.alertmanagerSpec.resources.requests.cpu=50m \
         --set alertmanager.alertmanagerSpec.resources.requests.memory=64Mi \
         --set "alertmanager.alertmanagerSpec.resources.limits.memory=128Mi" \
+        --set "alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy.type=None" \
         --wait \
         --timeout 300s
 
@@ -187,40 +188,51 @@ install_prometheus() {
 }
 
 # ------------------------------------------------------------
+install_metrics_server() {
+    log_section "metrics-server"
+
+    helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update
+    helm upgrade --install metrics-server metrics-server/metrics-server \
+        --namespace kube-system \
+        --set args="{--kubelet-insecure-tls}" \
+        --wait \
+        --timeout 120s
+
+    log_info "metrics-server prêt"
+}
+
+# ------------------------------------------------------------
 install_fluent_bit() {
-    # NOTE: Fluent Bit is installed here for local development only.
-    # In production, clients provision their own log shipper.
-    # The index name is read from values.yaml (elasticsearch.indices.logs)
-    # so Fluent Bit writes to the same index kube-seer is configured to read.
+    # Local environment only — ships app pod logs to Elasticsearch.
     local log_index
     log_index=$(grep 'logs:' ./helm/kube-seer/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
+    if [ -z "$log_index" ]; then
+        log_error "Could not extract ES log index from values.yaml"
+        exit 1
+    fi
 
     log_section "Fluent Bit (log shipper → ${log_index})"
 
     local es_password
     es_password=$(kubectl get secret elasticsearch-es-elastic-user \
         -n "${NAMESPACE_ELASTIC}" \
-        -o jsonpath='{.data.elastic}' | base64 -d)
+        -o jsonpath='{.data.elastic}' | base64 -d) || {
+        log_error "Failed to retrieve Elasticsearch password"
+        exit 1
+    }
 
     helm repo add fluent https://fluent.github.io/helm-charts --force-update
 
     helm upgrade --install fluent-bit fluent/fluent-bit \
         --namespace "${NAMESPACE_MONITORING}" \
         --create-namespace \
-        --set resources.requests.cpu=50m \
-        --set resources.requests.memory=64Mi \
-        --set resources.limits.memory=128Mi \
-        --set config.outputs="[OUTPUT]
-    Name              es
-    Match             kube.*
-    Host              elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc
-    Port              9200
-    HTTP_User         elastic
-    HTTP_Passwd       ${es_password}
-    Index             ${log_index}
-    Suppress_Type_Name On
-    tls               On
-    tls.verify        Off" \
+        --values scripts/fluentbit-values.yaml \
+        --set "env[0].name=ES_HOST" \
+        --set "env[0].value=elasticsearch-es-http.${NAMESPACE_ELASTIC}.svc" \
+        --set "env[1].name=ES_PASSWORD" \
+        --set "env[1].value=${es_password}" \
+        --set "env[2].name=ES_LOG_INDEX" \
+        --set "env[2].value=${log_index}" \
         --wait \
         --timeout 120s
 
@@ -291,6 +303,7 @@ main() {
     install_eck
     install_elasticsearch
     install_prometheus
+    install_metrics_server
     install_fluent_bit
     deploy_kube_seer
     print_summary

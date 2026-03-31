@@ -1,0 +1,54 @@
+# scripts/fluentbit-values.yaml
+# Fluent Bit configuration for local Kind environment only.
+# Collects application pod logs and ships them to Elasticsearch.
+
+config:
+  inputs: |
+    [INPUT]
+        Name              tail
+        Path              /var/log/containers/*.log
+        multiline.parser  docker, cri
+        Tag               kube.*
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+
+  filters: |
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Merge_Log           On
+        Keep_Log            On
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+        Labels              On
+        Annotations         Off
+
+    [FILTER]
+        Name    grep
+        Match   kube.*
+        Exclude $kubernetes['namespace_name'] ^(kube-system|kube-public|elastic-system|cert-manager|local-path-storage)$
+
+  outputs: |
+    [OUTPUT]
+        Name              es
+        Match             kube.*
+        Host              ${ES_HOST}
+        Port              9200
+        HTTP_User         elastic
+        HTTP_Passwd       ${ES_PASSWORD}
+        Index             ${ES_LOG_INDEX}
+        Suppress_Type_Name On
+        tls               On
+        tls.verify        Off
+        Time_Key          @timestamp
+        Retry_Limit       3
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi

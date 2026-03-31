@@ -98,7 +98,12 @@ class ElasticsearchStorage(BaseStorage):
         if not self._client:
             return []
         try:
-            result = await self._client.search(index=index, query=query_body, size=size)
+            result = await self._client.search(
+                index=index,
+                query=query_body,
+                size=size,
+                sort=[{"data.timestamp": {"order": "desc", "unmapped_type": "date"}}],
+            )
             return [hit["_source"] for hit in result["hits"]["hits"]]
         except NotFoundError:
             logger.warning("elasticsearch_storage.index_not_found", index=index)
@@ -106,3 +111,28 @@ class ElasticsearchStorage(BaseStorage):
         except Exception as e:
             logger.error("elasticsearch_storage.query_error", index=index, error=str(e))
             return []
+
+    async def aggregate(
+        self,
+        index: str,
+        query_body: Dict[str, Any],
+        aggs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        if not self._client:
+            return {}
+        try:
+            result = await self._client.search(
+                index=index,
+                query=query_body,
+                aggs=aggs,
+                size=0,
+            )
+            return result.get("aggregations", {})
+        except NotFoundError:
+            logger.warning("elasticsearch_storage.index_not_found", index=index)
+            return {}
+        except Exception as e:
+            logger.error(
+                "elasticsearch_storage.aggregate_error", index=index, error=str(e)
+            )
+            return {}

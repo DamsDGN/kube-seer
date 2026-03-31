@@ -33,3 +33,12 @@ class BaseStorage(ABC):
         size: int = 100,
     ) -> List[Dict[str, Any]]:
         """Query records from the storage backend."""
+
+    @abstractmethod
+    async def aggregate(
+        self,
+        index: str,
+        query_body: Dict[str, Any],
+        aggs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Run an aggregation query. Returns the `aggregations` dict from the response."""

@@ -1,16 +1,19 @@
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 from src.agent import SREAgent
 from src.config import Config
 from src.models import (
+    Anomaly,
+    AnalysisResult,
     CollectedData,
+    KubernetesEvent,
     NodeMetrics,
     PodMetrics,
-    KubernetesEvent,
     ResourceState,
+    Severity,
 )
-from src.models import Anomaly, AnalysisResult, Severity
 
 
 @pytest.fixture
@@ -411,3 +414,123 @@ class TestSREAgentAnalyzeTuple:
         )
         result = await agent.analyze(data)
         assert any(a.anomaly_id == "a-policy" for a in result.anomalies)
+
+
+def _make_anomaly(
+    anomaly_id: str,
+    resource_type: str,
+    resource_name: str,
+    namespace: str = "",
+) -> Anomaly:
+    return Anomaly(
+        anomaly_id=anomaly_id,
+        source="test",
+        severity=Severity.WARNING,
+        resource_type=resource_type,
+        resource_name=resource_name,
+        namespace=namespace,
+        description="test",
+        score=0.5,
+        details={},
+        timestamp=datetime(2026, 3, 31, tzinfo=timezone.utc),
+    )
+
+
+class TestFilterExclusions:
+    def _agent(self, **exclusions) -> SREAgent:
+        cfg = Config(elasticsearch_url="http://localhost:9200", **exclusions)
+        return SREAgent(cfg)
+
+    def test_no_exclusions_keeps_all(self):
+        agent = self._agent()
+        anomalies = [
+            _make_anomaly("a1", "pod", "my-pod", "default"),
+            _make_anomaly("a2", "deployment", "my-deploy", "production"),
+        ]
+        assert agent._filter_exclusions(anomalies) == anomalies
+
+    def test_exclude_namespace(self):
+        agent = self._agent(exclusions_namespaces=["kube-system"])
+        anomalies = [
+            _make_anomaly("a1", "pod", "kube-proxy", "kube-system"),
+            _make_anomaly("a2", "pod", "my-app", "default"),
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a2"
+
+    def test_exclude_deployment_by_name(self):
+        agent = self._agent(exclusions_deployments=["grafana"])
+        anomalies = [
+            _make_anomaly("a1", "deployment", "grafana", "monitoring"),
+            _make_anomaly("a2", "deployment", "my-app", "default"),
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a2"
+
+    def test_exclude_deployment_by_qualified_name(self):
+        agent = self._agent(exclusions_deployments=["monitoring/grafana"])
+        anomalies = [
+            _make_anomaly("a1", "deployment", "grafana", "monitoring"),
+            _make_anomaly("a2", "deployment", "grafana", "production"),  # different ns
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a2"
+
+    def test_exclude_daemonset(self):
+        agent = self._agent(exclusions_daemonsets=["kube-system/kube-proxy"])
+        anomalies = [
+            _make_anomaly("a1", "daemonset", "kube-proxy", "kube-system"),
+            _make_anomaly("a2", "daemonset", "fluent-bit", "monitoring"),
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a2"
+
+    def test_exclude_statefulset(self):
+        agent = self._agent(exclusions_statefulsets=["elasticsearch"])
+        anomalies = [
+            _make_anomaly("a1", "statefulset", "elasticsearch", "elastic-system"),
+            _make_anomaly("a2", "statefulset", "my-db", "default"),
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a2"
+
+    def test_exclude_pod(self):
+        agent = self._agent(exclusions_pods=["monitoring/fluent-bit-abc"])
+        anomalies = [
+            _make_anomaly("a1", "pod", "fluent-bit-abc", "monitoring"),
+            _make_anomaly("a2", "pod", "fluent-bit-abc", "other-ns"),  # different ns
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a2"
+
+    def test_namespace_exclusion_covers_all_resource_types(self):
+        agent = self._agent(exclusions_namespaces=["monitoring"])
+        anomalies = [
+            _make_anomaly("a1", "pod", "fluent-bit", "monitoring"),
+            _make_anomaly("a2", "deployment", "grafana", "monitoring"),
+            _make_anomaly("a3", "daemonset", "node-exporter", "monitoring"),
+            _make_anomaly("a4", "pod", "my-app", "default"),
+        ]
+        result = agent._filter_exclusions(anomalies)
+        assert len(result) == 1
+        assert result[0].anomaly_id == "a4"
+
+    def test_csv_string_parsed_correctly(self):
+        cfg = Config(
+            elasticsearch_url="http://localhost:9200",
+            exclusions_namespaces="kube-system,cert-manager",
+        )
+        assert cfg.exclusions_namespaces == ["kube-system", "cert-manager"]
+
+    def test_empty_string_gives_empty_list(self):
+        cfg = Config(
+            elasticsearch_url="http://localhost:9200",
+            exclusions_namespaces="",
+        )
+        assert cfg.exclusions_namespaces == []

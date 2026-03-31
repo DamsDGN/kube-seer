@@ -110,3 +110,53 @@ class TestElasticsearchQuery:
         results = await storage.query("sre-metrics", {"match_all": {}})
         assert len(results) == 2
         assert results[0]["record_type"] == "node_metrics"
+
+
+class TestElasticsearchAggregate:
+    @pytest.mark.asyncio
+    async def test_aggregate_returns_buckets(self, storage):
+        storage._client = AsyncMock()
+        storage._client.search = AsyncMock(
+            return_value={
+                "aggregations": {
+                    "by_app": {
+                        "buckets": [
+                            {"key": "api-gateway", "doc_count": 42},
+                            {"key": "worker", "doc_count": 7},
+                        ]
+                    }
+                },
+                "hits": {"hits": []},
+            }
+        )
+        result = await storage.aggregate(
+            index="sre-logs",
+            query_body={"match_all": {}},
+            aggs={
+                "by_app": {
+                    "terms": {"field": "kubernetes.labels.app.keyword", "size": 20}
+                }
+            },
+        )
+        assert result["by_app"]["buckets"][0]["key"] == "api-gateway"
+        assert result["by_app"]["buckets"][0]["doc_count"] == 42
+
+    @pytest.mark.asyncio
+    async def test_aggregate_returns_empty_on_not_found(self, storage):
+        from elasticsearch import NotFoundError
+
+        storage._client = AsyncMock()
+        storage._client.search = AsyncMock(
+            side_effect=NotFoundError(
+                message="index_not_found",
+                meta=AsyncMock(status=404),
+                body={"error": {"type": "index_not_found_exception"}},
+            )
+        )
+        result = await storage.aggregate("sre-logs", {}, {})
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_aggregate_returns_empty_when_no_client(self, storage):
+        result = await storage.aggregate("sre-logs", {}, {})
+        assert result == {}

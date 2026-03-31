@@ -3,6 +3,15 @@ agent:
   analysisInterval: 300
   logLevel: INFO
 
+# Exclusions — resources to skip during anomaly detection
+# Supports plain name (any namespace) or "namespace/name" for exact match
+exclusions:
+  namespaces: []        # e.g. ["kube-system", "cert-manager"]
+  deployments: []       # e.g. ["my-deploy", "monitoring/grafana"]
+  statefulsets: []      # e.g. ["elastic-system/elasticsearch"]
+  daemonsets: []        # e.g. ["kube-system/kube-proxy"]
+  pods: []              # e.g. ["monitoring/fluent-bit-abc"]
+
 # Elasticsearch (external prerequisite)
 elasticsearch:
   url: ""
@@ -65,6 +74,15 @@ alerter:
     webhook:
       enabled: false
       url: ""
+  # Slack notifications via AlertmanagerConfig (requires Prometheus Operator)
+  slack:
+    enabled: false
+    # Webhook URL — use webhookUrlSecretRef in production
+    webhookUrl: ""
+    # Reference to an existing Secret: { name: my-secret, key: webhookUrl }
+    webhookUrlSecretRef: {}
+    channel: "#alerts"
+    sendResolved: true
 
 # Image
 image:

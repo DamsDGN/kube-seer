@@ -8,7 +8,9 @@ from src.analyzer.correlator import Correlator
 from src.analyzer.predictor import Predictor
 from src.analyzer.events import EventAnalyzer
 from src.analyzer.logs import LogAnalyzer
+from src.analyzer.log_insights import LogInsightAnalyzer
 from src.analyzer.metrics import MetricsAnalyzer
+from src.analyzer.resources import ResourceStateAnalyzer
 from src.collector.k8s_api import KubernetesApiCollector
 from src.collector.metrics_server import MetricsServerCollector
 from src.collector.prometheus import PrometheusCollector
@@ -49,6 +51,8 @@ class SREAgent:
         self._metrics_analyzer = MetricsAnalyzer(config)
         self._event_analyzer = EventAnalyzer(config)
         self._log_analyzer = LogAnalyzer(config, self._storage)
+        self._log_insight_analyzer = LogInsightAnalyzer(config, self._storage)
+        self._resource_analyzer = ResourceStateAnalyzer(config)
         self._correlator = Correlator(config)
         self._predictor = Predictor(config)
         self._last_analysis: Optional[AnalysisResult] = None
@@ -209,6 +213,20 @@ class SREAgent:
             logger.error("agent.log_analysis_error", error=str(e))
 
         try:
+            insight_anomalies = await self._log_insight_analyzer.analyze()
+            anomalies.extend(insight_anomalies)
+        except Exception as e:
+            logger.error("agent.log_insight_analysis_error", error=str(e))
+
+        try:
+            resource_anomalies = await self._resource_analyzer.analyze(
+                resource_states=data.resource_states,
+            )
+            anomalies.extend(resource_anomalies)
+        except Exception as e:
+            logger.error("agent.resource_analysis_error", error=str(e))
+
+        try:
             incidents = await self._correlator.correlate(anomalies=anomalies, data=data)
         except Exception as e:
             logger.error("agent.correlation_error", error=str(e))
@@ -224,6 +242,12 @@ class SREAgent:
             logger.error("agent.prediction_error", error=str(e))
             predictions = []
 
+        before = len(anomalies)
+        anomalies = self._filter_exclusions(anomalies)
+        excluded = before - len(anomalies)
+        if excluded:
+            logger.info("agent.exclusions_applied", excluded=excluded)
+
         result = AnalysisResult(
             anomalies=anomalies,
             incidents=incidents,
@@ -236,6 +260,29 @@ class SREAgent:
         self._last_analysis = result
         logger.info("agent.analyzed", anomaly_count=len(anomalies))
         return result
+
+    def _filter_exclusions(self, anomalies: List[Anomaly]) -> List[Anomaly]:
+        cfg = self._config
+        excluded_ns = set(cfg.exclusions_namespaces)
+        excluded_by_type: dict[str, set[str]] = {
+            "deployment": set(cfg.exclusions_deployments),
+            "statefulset": set(cfg.exclusions_statefulsets),
+            "daemonset": set(cfg.exclusions_daemonsets),
+            "pod": set(cfg.exclusions_pods),
+        }
+
+        def _is_excluded(a: Anomaly) -> bool:
+            if a.namespace in excluded_ns:
+                return True
+            patterns = excluded_by_type.get(a.resource_type, set())
+            if not patterns:
+                return False
+            qualified = (
+                f"{a.namespace}/{a.resource_name}" if a.namespace else a.resource_name
+            )
+            return a.resource_name in patterns or qualified in patterns
+
+        return [a for a in anomalies if not _is_excluded(a)]
 
     async def store_anomalies(self, result: AnalysisResult) -> None:
         if not result.anomalies:
@@ -275,6 +322,10 @@ class SREAgent:
             await self._log_analyzer.update_model()
         except Exception as e:
             logger.error("agent.log_model_update_error", error=str(e))
+        try:
+            await self._log_insight_analyzer.update_model()
+        except Exception as e:
+            logger.error("agent.log_insight_model_update_error", error=str(e))
         try:
             await self._predictor.update(
                 node_metrics=data.node_metrics,
