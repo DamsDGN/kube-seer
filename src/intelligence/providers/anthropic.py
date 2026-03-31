@@ -23,4 +23,7 @@ class AnthropicProvider(BaseLLMProvider):
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        return message.content[0].text
+        block = message.content[0]
+        if not hasattr(block, "text"):
+            raise RuntimeError(f"Unexpected content block type: {type(block)}")
+        return block.text  # type: ignore[union-attr]
