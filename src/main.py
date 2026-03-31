@@ -33,6 +33,10 @@ async def main() -> None:
     def _bool(key: str, default: str) -> bool:
         return os.getenv(key, default).lower() == "true"
 
+    def _csv(key: str) -> list[str]:
+        val = os.getenv(key, "")
+        return [item.strip() for item in val.split(",") if item.strip()]
+
     config = Config(
         elasticsearch_url=os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200"),
         elasticsearch_username=os.getenv("ELASTICSEARCH_USERNAME", ""),
@@ -80,11 +84,11 @@ async def main() -> None:
             "ALERTER_FALLBACK_WEBHOOK_ENABLED", "false"
         ),
         alerter_fallback_webhook_url=os.getenv("ALERTER_FALLBACK_WEBHOOK_URL", ""),
-        exclusions_namespaces=os.getenv("EXCLUSIONS_NAMESPACES", ""),
-        exclusions_deployments=os.getenv("EXCLUSIONS_DEPLOYMENTS", ""),
-        exclusions_statefulsets=os.getenv("EXCLUSIONS_STATEFULSETS", ""),
-        exclusions_daemonsets=os.getenv("EXCLUSIONS_DAEMONSETS", ""),
-        exclusions_pods=os.getenv("EXCLUSIONS_PODS", ""),
+        exclusions_namespaces=_csv("EXCLUSIONS_NAMESPACES"),
+        exclusions_deployments=_csv("EXCLUSIONS_DEPLOYMENTS"),
+        exclusions_statefulsets=_csv("EXCLUSIONS_STATEFULSETS"),
+        exclusions_daemonsets=_csv("EXCLUSIONS_DAEMONSETS"),
+        exclusions_pods=_csv("EXCLUSIONS_PODS"),
     )
 
     setup_logging(config.agent_log_level)
