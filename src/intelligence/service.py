@@ -20,6 +20,19 @@ logger = structlog.get_logger()
 _VALID_SEVERITIES = {"ok", "warning", "critical"}
 
 
+def _coerce_str_list(items: list) -> list:
+    """Ensure each item in a list is a plain string (LLMs sometimes return dicts)."""
+    result = []
+    for item in items:
+        if isinstance(item, str):
+            result.append(item)
+        elif isinstance(item, dict):
+            result.append(next(iter(item.values()), str(item)))
+        else:
+            result.append(str(item))
+    return result
+
+
 def _normalize_severity(raw: str) -> str:
     """Return the severity value if valid, else pick the highest found, else 'warning'."""
     val = raw.lower().strip()
@@ -97,7 +110,7 @@ class IntelligenceService:
             cycle_timestamp=result.analysis_timestamp,
             anomaly_count=len(result.anomalies),
             summary=parsed.get("summary", ""),
-            root_causes=parsed.get("root_causes", []),
+            root_causes=_coerce_str_list(parsed.get("root_causes", [])),
             recommendations=parsed.get("recommendations", []),
             severity_assessment=_normalize_severity(
                 parsed.get("severity_assessment", "")
