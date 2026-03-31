@@ -13,6 +13,7 @@ class Config(BaseModel):
     elasticsearch_indices_metrics: str = "sre-metrics"
     elasticsearch_indices_logs: str = "sre-logs"
     elasticsearch_indices_anomalies: str = "sre-anomalies"
+    elasticsearch_indices_insights: str = "sre-insights"
 
     # Agent
     agent_analysis_interval: int = 300
@@ -54,6 +55,7 @@ class Config(BaseModel):
     alerter_alertmanager_url: str = "http://alertmanager:9093"
     alerter_fallback_webhook_enabled: bool = False
     alerter_fallback_webhook_url: str = ""
+    alerter_slack_webhook_url: str = ""
 
     # Exclusions (comma-separated strings parsed into lists)
     exclusions_namespaces: List[str] = []

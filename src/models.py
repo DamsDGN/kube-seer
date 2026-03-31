@@ -125,4 +125,17 @@ class Prediction(BaseModel):
     timestamp: datetime
 
 
+class LLMInsight(BaseModel):
+    insight_id: str
+    cycle_timestamp: datetime
+    anomaly_count: int
+    summary: str = ""
+    root_causes: List[str] = []
+    recommendations: List[Dict[str, Any]] = []
+    severity_assessment: str = ""
+    affected_namespaces: List[str] = []
+    raw_response: str = ""
+    provider: str = ""
+
+
 AnalysisResult.model_rebuild()

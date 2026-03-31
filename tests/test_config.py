@@ -41,6 +41,11 @@ class TestConfigDefaults:
         config = Config(elasticsearch_url="http://localhost:9200")
         assert config.prediction_horizon_hours == 168
 
+    def test_intelligence_indices_defaults(self):
+        config = Config(elasticsearch_url="http://localhost:9200")
+        assert config.elasticsearch_indices_insights == "sre-insights"
+        assert config.alerter_slack_webhook_url == ""
+
 
 class TestConfigValidation:
     def test_elasticsearch_url_required(self):

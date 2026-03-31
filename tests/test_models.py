@@ -10,6 +10,7 @@ from src.models import (
     AnalysisResult,
     Incident,
     Prediction,
+    LLMInsight,
 )
 
 
@@ -288,6 +289,46 @@ class TestAnalysisResult:
             events_analyzed=0,
         )
         assert len(result.anomalies) == 1
+
+
+class TestLLMInsight:
+    def _make(self, **kwargs):
+        from datetime import datetime, timezone
+
+        defaults = dict(
+            insight_id="ins-1",
+            cycle_timestamp=datetime(2026, 3, 31, 12, 0, tzinfo=timezone.utc),
+            anomaly_count=3,
+            summary="2 critical anomalies detected",
+            root_causes=["payment-api OOM", "worker CrashLoop"],
+            recommendations=[
+                {
+                    "priority": 1,
+                    "action": "Increase limit",
+                    "resource": "deployment/payment-api",
+                }
+            ],
+            severity_assessment="critical",
+            affected_namespaces=["production"],
+            raw_response='{"summary":"..."}',
+            provider="ollama/llama3.2",
+        )
+        defaults.update(kwargs)
+        return LLMInsight(**defaults)
+
+    def test_creation(self):
+        ins = self._make()
+        assert ins.insight_id == "ins-1"
+        assert ins.anomaly_count == 3
+        assert ins.provider == "ollama/llama3.2"
+
+    def test_empty_parsed_fields_on_fallback(self):
+        ins = self._make(
+            summary="", root_causes=[], recommendations=[], raw_response="not json"
+        )
+        assert ins.summary == ""
+        assert ins.root_causes == []
+        assert ins.raw_response == "not json"
 
 
 class TestPrediction:
