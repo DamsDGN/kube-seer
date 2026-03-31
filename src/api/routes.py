@@ -138,4 +138,30 @@ def create_app(config: Config, agent) -> FastAPI:
             }
         return {"predictions": [], "count": 0}
 
+    @app.get("/insights/latest")
+    async def get_latest_insight():
+        intel = getattr(agent, "_intelligence_service", None)
+        if not intel:
+            return JSONResponse(
+                status_code=404, content={"error": "Intelligence service not enabled"}
+            )
+        insight = intel._last_insight
+        if not insight:
+            return JSONResponse(
+                status_code=404, content={"error": "No insight available yet"}
+            )
+        return insight.model_dump(mode="json")
+
+    @app.get("/insights")
+    async def get_insights(limit: int = 10, offset: int = 0):
+        query_body: dict = {
+            "bool": {"must": [{"term": {"record_type.keyword": "llm_insight"}}]}
+        }
+        results = await agent._storage.query(
+            index=f"{config.elasticsearch_indices_insights}-*",
+            query_body=query_body,
+            size=limit,
+        )
+        return {"insights": results, "count": len(results)}
+
     return app
