@@ -17,6 +17,19 @@ from src.models import AnalysisResult, LLMInsight, StoredRecord
 
 logger = structlog.get_logger()
 
+_VALID_SEVERITIES = {"ok", "warning", "critical"}
+
+
+def _normalize_severity(raw: str) -> str:
+    """Return the severity value if valid, else pick the highest found, else 'warning'."""
+    val = raw.lower().strip()
+    if val in _VALID_SEVERITIES:
+        return val
+    for sev in ("critical", "warning", "ok"):
+        if sev in val:
+            return sev
+    return "warning"
+
 
 def _dated_index(base: str) -> str:
     return f"{base}-{datetime.now(timezone.utc).strftime('%Y.%m.%d')}"
@@ -86,7 +99,9 @@ class IntelligenceService:
             summary=parsed.get("summary", ""),
             root_causes=parsed.get("root_causes", []),
             recommendations=parsed.get("recommendations", []),
-            severity_assessment=parsed.get("severity_assessment", ""),
+            severity_assessment=_normalize_severity(
+                parsed.get("severity_assessment", "")
+            ),
             affected_namespaces=parsed.get("affected_namespaces", []),
             raw_response=raw,
             provider=f"{self._config.intelligence_provider}/{self._config.intelligence_model}",

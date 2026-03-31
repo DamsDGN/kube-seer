@@ -13,7 +13,9 @@ SYSTEM_PROMPT = (
     "You receive a structured snapshot of detected anomalies, correlated incidents, "
     "and resource saturation predictions. "
     "Respond ONLY with a valid JSON object matching the required schema. "
-    "Do not add any explanation outside the JSON."
+    "Do not add any explanation outside the JSON. "
+    "For severity_assessment, choose exactly ONE value from: ok, warning, critical. "
+    "Never combine values with | or /."
 )
 
 _SEVERITY_NAMES = {
@@ -62,11 +64,15 @@ def build_prompt(result: AnalysisResult) -> str:
             )
 
     schema = (
-        '{"summary":"…","root_causes":["…"],'
+        '{"summary":"one sentence summary","root_causes":["…"],'
         '"recommendations":[{"priority":1,"action":"…","resource":"…"}],'
-        '"severity_assessment":"ok|warning|critical","affected_namespaces":["…"]}'
+        '"severity_assessment":"critical","affected_namespaces":["…"]}'
+        "\n"
+        "severity_assessment must be exactly one of: ok, warning, critical"
     )
-    lines.append(f"\nRespond with JSON: {schema}")
+    lines.append(
+        f"\nRespond with this JSON structure (example values shown):\n{schema}"
+    )
     return "\n".join(lines)
 
 
