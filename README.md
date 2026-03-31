@@ -16,6 +16,7 @@ Intelligent SRE agent for Kubernetes — collects metrics, detects anomalies, co
 - **Incident correlation**: Groups related anomalies into coherent incidents
 - **Saturation prediction**: Linear regression with configurable horizon
 - **Multi-channel alerting**: Alertmanager (primary) + Slack via `AlertmanagerConfig` + fallback webhook
+- **Configurable exclusions**: Skip namespaces, deployments, statefulsets, daemonsets or pods from anomaly detection via Helm values
 - **REST API**: Real-time access to anomalies, incidents, and predictions
 
 ## Architecture
@@ -101,7 +102,7 @@ tests/
 │   ├── test_detection.py       # Full pipeline: collect → analyze → anomaly
 │   ├── test_resource_states.py # Resource state scenarios (cordoned node, bad PVC…)
 │   └── test_api.py             # REST API endpoints
-└── ...                   # 249 unit tests + 29 integration tests
+└── ...                   # 259 unit tests + 29 integration tests
 
 helm/kube-seer/           # Helm chart (Deployment, RBAC, AlertmanagerConfig…)
 scripts/
@@ -142,7 +143,7 @@ git clone https://github.com/DamsDGN/kube-seer.git
 cd kube-seer
 make setup-dev          # create venv + install dependencies
 source .venv/bin/activate
-make test               # 249 unit tests
+make test               # 259 unit tests
 ```
 
 ### Local Kind environment
@@ -228,6 +229,11 @@ helm install kube-seer ./helm/kube-seer \
 | `PREDICTION_HORIZON_HOURS` | `168` | Saturation prediction horizon (7 days) |
 | `ALERTER_ALERTMANAGER_ENABLED` | `true` | |
 | `ALERTER_ALERTMANAGER_URL` | `http://alertmanager:9093` | |
+| `EXCLUSIONS_NAMESPACES` | `""` | Comma-separated namespaces to skip |
+| `EXCLUSIONS_DEPLOYMENTS` | `""` | Comma-separated deployments (`name` or `namespace/name`) |
+| `EXCLUSIONS_STATEFULSETS` | `""` | Comma-separated statefulsets |
+| `EXCLUSIONS_DAEMONSETS` | `""` | Comma-separated daemonsets |
+| `EXCLUSIONS_PODS` | `""` | Comma-separated pods |
 
 ## Tests
 
@@ -247,7 +253,7 @@ pytest tests/ --ignore=tests/integration --cov=src --cov-report=html
 GitHub Actions pipeline on every push and PR:
 
 - Black + flake8
-- 249 unit tests on Python 3.11, 3.12, 3.13
+- 259 unit tests on Python 3.11, 3.12, 3.13
 - Bandit security scan
 - Helm chart validation
 - Multi-platform Docker build (AMD64/ARM64)
