@@ -28,7 +28,7 @@ class OpenAIProvider(BaseLLMProvider):
             "temperature": 0.2,
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(
                 f"{self._api_url}/v1/chat/completions",
                 json=payload,
