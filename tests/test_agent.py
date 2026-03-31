@@ -534,3 +534,43 @@ class TestFilterExclusions:
             exclusions_namespaces="",
         )
         assert cfg.exclusions_namespaces == []
+
+
+class TestSREAgentIntelligence:
+    @pytest.mark.asyncio
+    async def test_intelligence_service_called_in_cycle(self, agent):
+        from unittest.mock import AsyncMock
+
+        mock_intel = AsyncMock()
+        mock_intel.run = AsyncMock(return_value=None)
+        agent._intelligence_service = mock_intel
+
+        # Mock all analyzers to return empty
+        agent._metrics_analyzer = AsyncMock()
+        agent._metrics_analyzer.analyze = AsyncMock(return_value=[])
+        agent._event_analyzer = AsyncMock()
+        agent._event_analyzer.analyze = AsyncMock(return_value=[])
+        agent._log_analyzer = AsyncMock()
+        agent._log_analyzer.analyze = AsyncMock(return_value=[])
+        agent._log_insight_analyzer = AsyncMock()
+        agent._log_insight_analyzer.analyze = AsyncMock(return_value=[])
+        agent._resource_analyzer = AsyncMock()
+        agent._resource_analyzer.analyze = AsyncMock(return_value=[])
+        agent._correlator = AsyncMock()
+        agent._correlator.correlate = AsyncMock(return_value=[])
+        agent._predictor = AsyncMock()
+        agent._predictor.predict = AsyncMock(return_value=([], []))
+        agent._storage.store_bulk = AsyncMock(return_value=0)
+
+        from src.models import CollectedData
+        from datetime import datetime, timezone
+
+        data = CollectedData(
+            node_metrics=[],
+            pod_metrics=[],
+            events=[],
+            resource_states=[],
+            collection_timestamp=datetime(2026, 3, 31, tzinfo=timezone.utc),
+        )
+        await agent.analyze(data)
+        mock_intel.run.assert_called_once()
