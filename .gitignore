@@ -3,6 +3,7 @@
 
 # Claude
 .claude
+docs/superpowers/
 
 # Environnement local
 local-env/
