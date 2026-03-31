@@ -26,6 +26,7 @@ elasticsearch:
     anomalies: "sre-anomalies"
     # Set to match your existing log shipper index name or pattern (e.g. "my-logs-*")
     logs: "sre-logs"
+    insights: "sre-insights"
 
 # Collectors
 collectors:
@@ -56,14 +57,22 @@ ml:
   windowSize: 100
   anomalyThreshold: 0.05
 
-# Intelligence (optional LLM)
+# Intelligence (optional LLM analysis)
+# Produces root cause analysis and recommendations at the end of each cycle.
+# Supports Ollama (self-hosted, data stays on-cluster), OpenAI, and Anthropic.
 intelligence:
   enabled: false
+  # "ollama" | "openai" | "anthropic"
   provider: ""
+  # Ollama: http://ollama.monitoring.svc:11434
+  # OpenAI: leave empty (uses https://api.openai.com)
+  # Anthropic: leave empty (uses SDK default)
   apiUrl: ""
   apiKey: ""
   apiKeySecretRef: ""
   model: ""
+  # LLM request timeout in seconds (if needed).
+  timeoutSeconds: 60
 
 # Alerting
 alerter:

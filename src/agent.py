@@ -17,6 +17,7 @@ from src.collector.prometheus import PrometheusCollector
 from src.config import Config
 from src.models import AnalysisResult, Anomaly, CollectedData, StoredRecord
 from src.alerter.service import AlerterService
+from src.intelligence.service import IntelligenceService
 from src.storage.elasticsearch import ElasticsearchStorage
 
 logger = structlog.get_logger()
@@ -57,6 +58,11 @@ class SREAgent:
         self._predictor = Predictor(config)
         self._last_analysis: Optional[AnalysisResult] = None
         self._alerter = AlerterService(config)
+        self._intelligence_service: Optional[IntelligenceService] = (
+            IntelligenceService(config, self._storage)
+            if config.intelligence_enabled
+            else None
+        )
 
     async def initialize(self) -> None:
         logger.info("agent.initializing")
@@ -247,6 +253,22 @@ class SREAgent:
         excluded = before - len(anomalies)
         if excluded:
             logger.info("agent.exclusions_applied", excluded=excluded)
+
+        # LLM intelligence — end-of-cycle enrichment
+        if self._intelligence_service:
+            try:
+                await self._intelligence_service.run(
+                    AnalysisResult(
+                        anomalies=anomalies,
+                        incidents=incidents,
+                        predictions=predictions,
+                        analysis_timestamp=data.collection_timestamp,
+                        metrics_analyzed=len(data.node_metrics) + len(data.pod_metrics),
+                        events_analyzed=len(data.events),
+                    )
+                )
+            except Exception as e:
+                logger.error("agent.intelligence_error", error=str(e))
 
         result = AnalysisResult(
             anomalies=anomalies,

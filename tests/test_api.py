@@ -216,3 +216,55 @@ class TestPredictionsEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["predictions"] == []
+
+
+class TestInsightsEndpoints:
+    @pytest.mark.asyncio
+    async def test_insights_latest_returns_404_when_no_insight(
+        self, client, mock_agent
+    ):
+        mock_agent._intelligence_service = MagicMock()
+        mock_agent._intelligence_service._last_insight = None
+        resp = await client.get("/insights/latest")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_insights_latest_returns_insight(self, client, mock_agent):
+        from src.models import LLMInsight
+
+        insight = LLMInsight(
+            insight_id="ins-1",
+            cycle_timestamp=datetime(2026, 3, 31, tzinfo=timezone.utc),
+            anomaly_count=2,
+            summary="2 anomalies",
+            root_causes=["OOM"],
+            recommendations=[],
+            severity_assessment="warning",
+            affected_namespaces=["default"],
+            raw_response="{}",
+            provider="ollama/llama3.2",
+        )
+        mock_agent._intelligence_service = MagicMock()
+        mock_agent._intelligence_service._last_insight = insight
+        resp = await client.get("/insights/latest")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["insight_id"] == "ins-1"
+        assert data["summary"] == "2 anomalies"
+
+    @pytest.mark.asyncio
+    async def test_insights_returns_list(self, client, mock_agent):
+        mock_agent._storage.query = AsyncMock(
+            return_value=[{"record_type": "llm_insight", "data": {}}]
+        )
+        resp = await client.get("/insights")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "insights" in data
+        assert data["count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_insights_latest_404_when_service_disabled(self, client, mock_agent):
+        mock_agent._intelligence_service = None
+        resp = await client.get("/insights/latest")
+        assert resp.status_code == 404
