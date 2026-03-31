@@ -1,4 +1,6 @@
-from pydantic import BaseModel, model_validator
+from typing import List
+
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class Config(BaseModel):
@@ -52,6 +54,29 @@ class Config(BaseModel):
     alerter_alertmanager_url: str = "http://alertmanager:9093"
     alerter_fallback_webhook_enabled: bool = False
     alerter_fallback_webhook_url: str = ""
+
+    # Exclusions (comma-separated strings parsed into lists)
+    exclusions_namespaces: List[str] = []
+    exclusions_deployments: List[str] = []
+    exclusions_statefulsets: List[str] = []
+    exclusions_daemonsets: List[str] = []
+    exclusions_pods: List[str] = []
+
+    @field_validator(
+        "exclusions_namespaces",
+        "exclusions_deployments",
+        "exclusions_statefulsets",
+        "exclusions_daemonsets",
+        "exclusions_pods",
+        mode="before",
+    )
+    @classmethod
+    def parse_csv(cls, v: object) -> List[str]:
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(",") if item.strip()]
+        if isinstance(v, list):
+            return v
+        return []
 
     @model_validator(mode="after")
     def validate_config(self) -> "Config":

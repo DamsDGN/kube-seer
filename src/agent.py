@@ -242,6 +242,12 @@ class SREAgent:
             logger.error("agent.prediction_error", error=str(e))
             predictions = []
 
+        before = len(anomalies)
+        anomalies = self._filter_exclusions(anomalies)
+        excluded = before - len(anomalies)
+        if excluded:
+            logger.info("agent.exclusions_applied", excluded=excluded)
+
         result = AnalysisResult(
             anomalies=anomalies,
             incidents=incidents,
@@ -254,6 +260,29 @@ class SREAgent:
         self._last_analysis = result
         logger.info("agent.analyzed", anomaly_count=len(anomalies))
         return result
+
+    def _filter_exclusions(self, anomalies: List[Anomaly]) -> List[Anomaly]:
+        cfg = self._config
+        excluded_ns = set(cfg.exclusions_namespaces)
+        excluded_by_type: dict[str, set[str]] = {
+            "deployment": set(cfg.exclusions_deployments),
+            "statefulset": set(cfg.exclusions_statefulsets),
+            "daemonset": set(cfg.exclusions_daemonsets),
+            "pod": set(cfg.exclusions_pods),
+        }
+
+        def _is_excluded(a: Anomaly) -> bool:
+            if a.namespace in excluded_ns:
+                return True
+            patterns = excluded_by_type.get(a.resource_type, set())
+            if not patterns:
+                return False
+            qualified = (
+                f"{a.namespace}/{a.resource_name}" if a.namespace else a.resource_name
+            )
+            return a.resource_name in patterns or qualified in patterns
+
+        return [a for a in anomalies if not _is_excluded(a)]
 
     async def store_anomalies(self, result: AnalysisResult) -> None:
         if not result.anomalies:

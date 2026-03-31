@@ -80,6 +80,11 @@ async def main() -> None:
             "ALERTER_FALLBACK_WEBHOOK_ENABLED", "false"
         ),
         alerter_fallback_webhook_url=os.getenv("ALERTER_FALLBACK_WEBHOOK_URL", ""),
+        exclusions_namespaces=os.getenv("EXCLUSIONS_NAMESPACES", ""),
+        exclusions_deployments=os.getenv("EXCLUSIONS_DEPLOYMENTS", ""),
+        exclusions_statefulsets=os.getenv("EXCLUSIONS_STATEFULSETS", ""),
+        exclusions_daemonsets=os.getenv("EXCLUSIONS_DAEMONSETS", ""),
+        exclusions_pods=os.getenv("EXCLUSIONS_PODS", ""),
     )
 
     setup_logging(config.agent_log_level)

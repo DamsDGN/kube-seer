@@ -268,9 +268,12 @@ class MetricsAnalyzer(BaseAnalyzer):
                         namespace=pod.namespace,
                         description=(
                             f"Abnormal resource usage on pod {pod.pod_name}: "
-                            f"CPU {pod.cpu_usage_millicores}m, "
-                            f"memory {pod.memory_usage_bytes // (1024 * 1024)}Mi, "
-                            f"restarts {pod.restart_count}"
+                            + (
+                                f"{pod.restart_count} restarts, status {pod.status}"
+                                if pod.restart_count > 0
+                                else f"CPU {pod.cpu_usage_millicores}m, "
+                                f"memory {pod.memory_usage_bytes // (1024 * 1024)}Mi"
+                            )
                         ),
                         score=max(0.0, min(1.0, -scores[i])),
                         details={

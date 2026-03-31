@@ -35,3 +35,8 @@ data:
   ALERTER_ALERTMANAGER_URL: {{ .Values.alerter.alertmanager.url | quote }}
   ALERTER_FALLBACK_WEBHOOK_ENABLED: {{ .Values.alerter.fallback.webhook.enabled | quote }}
   ALERTER_FALLBACK_WEBHOOK_URL: {{ .Values.alerter.fallback.webhook.url | quote }}
+  EXCLUSIONS_NAMESPACES: {{ .Values.exclusions.namespaces | join "," | quote }}
+  EXCLUSIONS_DEPLOYMENTS: {{ .Values.exclusions.deployments | join "," | quote }}
+  EXCLUSIONS_STATEFULSETS: {{ .Values.exclusions.statefulsets | join "," | quote }}
+  EXCLUSIONS_DAEMONSETS: {{ .Values.exclusions.daemonsets | join "," | quote }}
+  EXCLUSIONS_PODS: {{ .Values.exclusions.pods | join "," | quote }}
