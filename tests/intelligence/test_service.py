@@ -48,34 +48,39 @@ class TestShouldCallLLM:
 
         cfg = _make_config()
         storage = AsyncMock()
+        storage.query = AsyncMock(return_value=[])
         return IntelligenceService(cfg, storage)
 
-    def test_skip_when_no_anomalies(self):
+    @pytest.mark.asyncio
+    async def test_skip_when_no_anomalies(self):
         svc = self._service()
-        assert svc._should_call_llm(_make_result(anomalies=[])) is False
+        assert await svc._should_call_llm(_make_result(anomalies=[])) is False
 
-    def test_call_when_new_anomalies(self):
+    @pytest.mark.asyncio
+    async def test_call_when_new_anomalies(self):
         svc = self._service()
         result = _make_result(anomalies=[_make_anomaly("a1")])
-        assert svc._should_call_llm(result) is True
+        assert await svc._should_call_llm(result) is True
 
-    def test_skip_when_same_fingerprint(self):
+    @pytest.mark.asyncio
+    async def test_skip_when_same_fingerprint(self):
         svc = self._service()
         # Same resource/severity across two cycles (different UUIDs, same content)
         result1 = _make_result(anomalies=[_make_anomaly("a1")])
         result2 = _make_result(
             anomalies=[_make_anomaly("a2")]
         )  # new UUID, same content
-        svc._should_call_llm(result1)  # first call — sets state
-        assert svc._should_call_llm(result2) is False  # same fingerprint → skip
+        await svc._should_call_llm(result1)  # first call — sets state
+        assert await svc._should_call_llm(result2) is False  # same fingerprint → skip
 
-    def test_call_when_anomalies_change(self):
+    @pytest.mark.asyncio
+    async def test_call_when_anomalies_change(self):
         svc = self._service()
-        svc._should_call_llm(
+        await svc._should_call_llm(
             _make_result(anomalies=[_make_anomaly("a1", resource_name="pod-a")])
         )
         result2 = _make_result(anomalies=[_make_anomaly("a2", resource_name="pod-b")])
-        assert svc._should_call_llm(result2) is True
+        assert await svc._should_call_llm(result2) is True
 
 
 _VALID_RESPONSE = (
