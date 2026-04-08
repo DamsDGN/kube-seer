@@ -92,6 +92,14 @@ alerter:
     webhookUrlSecretRef: {}
     channel: "#alerts"
     sendResolved: true
+    # When true, Slack notifications are sent only via LLM insights (direct webhook).
+    # The AlertmanagerConfig is not created — raw anomaly alerts are not forwarded to Slack.
+    # Requires intelligence.enabled=true, otherwise no Slack notifications will be sent.
+    llmOnly: false
+  # When true, alertnames include the pattern type (e.g. sre_logs_oom_pod vs sre_logs_pod)
+  # This prevents Alertmanager's critical→warning inhibition from suppressing alerts
+  # of different log pattern types within the same namespace.
+  groupByPattern: false
 
 # Image
 image:
@@ -103,9 +111,9 @@ image:
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 200Mi
   limits:
-    memory: 256Mi
+    memory: 500Mi
 
 # Service
 service:

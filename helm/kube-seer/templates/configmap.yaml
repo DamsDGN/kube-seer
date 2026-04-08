@@ -36,6 +36,7 @@ data:
   ALERTER_ALERTMANAGER_URL: {{ .Values.alerter.alertmanager.url | quote }}
   ALERTER_FALLBACK_WEBHOOK_ENABLED: {{ .Values.alerter.fallback.webhook.enabled | quote }}
   ALERTER_FALLBACK_WEBHOOK_URL: {{ .Values.alerter.fallback.webhook.url | quote }}
+  ALERTER_GROUP_BY_PATTERN: {{ .Values.alerter.groupByPattern | quote }}
   ELASTICSEARCH_INDICES_INSIGHTS: {{ .Values.elasticsearch.indices.insights | quote }}
   EXCLUSIONS_NAMESPACES: {{ .Values.exclusions.namespaces | join "," | quote }}
   EXCLUSIONS_DEPLOYMENTS: {{ .Values.exclusions.deployments | join "," | quote }}

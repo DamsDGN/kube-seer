@@ -3,7 +3,9 @@
 [![CI/CD Pipeline](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-Intelligent SRE agent for Kubernetes — collects metrics, detects anomalies, correlates incidents, predicts resource saturation, and surfaces ML-based log insights before incidents escalate.
+**kube-seer** is an intelligent SRE agent for Kubernetes. It continuously collects metrics and logs, detects anomalies using threshold rules and ML models, correlates related signals into incidents, and optionally enriches them with LLM-generated root cause analysis and remediation steps — all before your on-call gets paged.
+
+It ships as a single Helm chart and integrates with your existing observability stack (Prometheus, Elasticsearch, Alertmanager, Fluent Bit). The LLM layer is **optional and privacy-first**: use Ollama to run models entirely on-cluster so your metrics and logs never leave your infrastructure, or connect to any OpenAI-compatible API (Mistral, vLLM, LM Studio) or Anthropic.
 
 ## Features
 
@@ -15,6 +17,7 @@ Intelligent SRE agent for Kubernetes — collects metrics, detects anomalies, co
 - **Log ML analysis**: Deployment-level error spike detection (two 5-min windows) + IsolationForest outlier detection per pod (`source=logs_ml`)
 - **Incident correlation**: Groups related anomalies into coherent incidents
 - **Saturation prediction**: Linear regression with configurable horizon
+- **LLM intelligence**: Optional LLM analysis of detected anomalies — root cause suggestions and remediation steps. Works with any OpenAI-compatible API (OpenAI, Mistral, vLLM, LM Studio) or Anthropic. Supports **self-hosted models via Ollama** — your data never leaves the cluster.
 - **Multi-channel alerting**: Alertmanager (primary) + Slack via `AlertmanagerConfig` + fallback webhook
 - **Configurable exclusions**: Skip namespaces, deployments, statefulsets, daemonsets or pods from anomaly detection via Helm values
 - **REST API**: Real-time access to anomalies, incidents, and predictions
@@ -22,25 +25,25 @@ Intelligent SRE agent for Kubernetes — collects metrics, detects anomalies, co
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                           SREAgent                               │
-│                                                                  │
-│  ┌─────────────┐   ┌──────────────────────┐   ┌──────────────┐  │
-│  │  Collectors │──►│      Analyzers       │──►│   Alerter    │  │
-│  └─────────────┘   └──────────────────────┘   └──────────────┘  │
-│        │                      │                       │          │
-│   Prometheus          MetricsAnalyzer          Alertmanager      │
-│   MetricsSrv          EventAnalyzer               + Slack        │
-│   K8s API (14)        LogAnalyzer              FallbackWebhook   │
-│                       LogInsightAnalyzer                         │
-│                       ResourceStateAnalyzer                      │
-│                       Predictor                                  │
-│                       Correlator                                 │
-└──────────────────────────────────────────────────────────────────┘
-         │                                       │
-   Elasticsearch                             REST API
-   sre-metrics                            /anomalies
-   sre-anomalies                          /incidents
+┌──────────────────────────────────────────────────────────────────────────┐
+│                              SREAgent                                    │
+│                                                                          │
+│  ┌─────────────┐   ┌──────────────────────┐   ┌──────────────────────┐  │
+│  │  Collectors │──►│      Analyzers       │──►│       Alerter        │  │
+│  └─────────────┘   └──────────────────────┘   └──────────────────────┘  │
+│        │                      │                          │               │
+│   Prometheus          MetricsAnalyzer             Alertmanager           │
+│   MetricsSrv          EventAnalyzer                  + Slack             │
+│   K8s API (14)        LogAnalyzer               FallbackWebhook          │
+│                       LogInsightAnalyzer                                 │
+│                       ResourceStateAnalyzer    ┌──────────────────────┐  │
+│                       Predictor               │  IntelligenceService  │  │
+│                       Correlator              │  (optional LLM layer) │  │
+└──────────────────────────────────────────────┴──────────────────────┴──┘
+         │                                       │              │
+   Elasticsearch                             REST API      LLM Provider
+   sre-metrics                            /anomalies    (OpenAI / Mistral /
+   sre-anomalies                          /incidents     Ollama / Anthropic)
    sre-logs (Fluent Bit)                  /predictions
 ```
 
@@ -156,6 +159,27 @@ make kind-reload        # rebuild and redeploy kube-seer only
 make kind-down          # tear down the cluster
 ```
 
+Optional features are enabled via environment variables — no interactive prompts:
+
+```bash
+# With Slack notifications
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/... make kind-up
+
+# With LLM intelligence (any OpenAI-compatible provider)
+INTELLIGENCE_API_KEY=sk-...       \
+INTELLIGENCE_API_URL=https://api.mistral.ai/v1 \
+INTELLIGENCE_PROVIDER=openai      \
+INTELLIGENCE_MODEL=mistral-small-latest \
+make kind-up
+
+# Self-hosted with Ollama (data stays on-cluster)
+INTELLIGENCE_API_KEY=ollama       \
+INTELLIGENCE_API_URL=http://ollama.ollama.svc:11434/v1 \
+INTELLIGENCE_PROVIDER=openai      \
+INTELLIGENCE_MODEL=llama3.2       \
+make kind-up
+```
+
 | Service | URL | Credentials |
 |---|---|---|
 | kube-seer API | http://localhost:8080 | — |
@@ -193,9 +217,105 @@ helm install kube-seer ./helm/kube-seer \
   --set alerter.slack.enabled=true \
   --set alerter.slack.webhookUrl=https://hooks.slack.com/services/... \
   --set alerter.slack.channel='#alerts'
+
+# LLM-only mode: Slack receives only LLM-enriched insights, not raw anomaly alerts
+helm install kube-seer ./helm/kube-seer \
+  --namespace monitoring --create-namespace \
+  --set elasticsearch.url=https://elasticsearch:9200 \
+  --set elasticsearch.password=your-password \
+  --set alerter.slack.enabled=true \
+  --set alerter.slack.webhookUrl=https://hooks.slack.com/services/... \
+  --set alerter.slack.llmOnly=true \
+  --set intelligence.enabled=true \
+  --set intelligence.provider=openai \
+  --set intelligence.apiKey=sk-... \
+  --set intelligence.apiUrl=https://api.mistral.ai/v1 \
+  --set intelligence.model=mistral-small-latest
 ```
 
 > **Log collection:** Fluent Bit is not bundled in the Helm chart — it is an optional infrastructure component. Deploy it separately and point it at your Elasticsearch instance. Set `elasticsearch.indices.logs` to match your log index name (default: `sre-logs`).
+
+## LLM Intelligence
+
+kube-seer can optionally call an LLM at the end of each detection cycle to produce a synthesized root cause analysis and remediation steps across all detected anomalies. The LLM is only called when the anomaly set changes (fingerprint-based deduplication, persisted across pod restarts), so you won't get duplicate Slack notifications after a rollout.
+
+### Self-hosted vs cloud providers
+
+**Ollama (recommended for sensitive environments):** Deploy Ollama on-cluster and point kube-seer at it. Your metrics, logs, and anomaly data never leave your infrastructure.
+
+```bash
+# Ollama on-cluster — data stays private
+INTELLIGENCE_PROVIDER=openai \
+INTELLIGENCE_API_URL=http://ollama.ollama.svc:11434/v1 \
+INTELLIGENCE_API_KEY=ollama \
+INTELLIGENCE_MODEL=llama3.2 \
+make kind-up
+```
+
+**Cloud providers:** Use any OpenAI-compatible API or Anthropic.
+
+```bash
+# Mistral
+INTELLIGENCE_PROVIDER=openai \
+INTELLIGENCE_API_URL=https://api.mistral.ai/v1 \
+INTELLIGENCE_API_KEY=sk-... \
+INTELLIGENCE_MODEL=mistral-small-latest \
+make kind-up
+
+# OpenAI
+INTELLIGENCE_PROVIDER=openai \
+INTELLIGENCE_API_URL=https://api.openai.com/v1 \
+INTELLIGENCE_API_KEY=sk-... \
+INTELLIGENCE_MODEL=gpt-4o-mini \
+make kind-up
+
+# Anthropic
+INTELLIGENCE_PROVIDER=anthropic \
+INTELLIGENCE_API_KEY=sk-ant-... \
+INTELLIGENCE_MODEL=claude-haiku-4-5-20251001 \
+make kind-up
+```
+
+### Supported providers
+
+| Provider | `intelligence.provider` | `intelligence.apiUrl` |
+|---|---|---|
+| **Ollama** (self-hosted) | `openai` | `http://ollama.ollama.svc:11434/v1` |
+| **OpenAI** | `openai` | `https://api.openai.com/v1` |
+| **Mistral** | `openai` | `https://api.mistral.ai/v1` |
+| **vLLM / LM Studio** | `openai` | `http://vllm.svc:8000/v1` |
+| **Anthropic** | `anthropic` | *(leave empty)* |
+
+### Helm values
+
+```bash
+helm install kube-seer ./helm/kube-seer \
+  --set intelligence.enabled=true \
+  --set intelligence.provider=openai \
+  --set intelligence.apiKey=sk-... \
+  --set intelligence.apiUrl=https://api.mistral.ai/v1 \
+  --set intelligence.model=mistral-small-latest
+```
+
+| Value | Default | Description |
+|---|---|---|
+| `intelligence.enabled` | `false` | Enable LLM analysis |
+| `intelligence.provider` | `""` | `openai` or `anthropic` |
+| `intelligence.apiKey` | `""` | API key (stored in a Kubernetes Secret) |
+| `intelligence.apiUrl` | `""` | Base URL up to `/v1` (e.g. `https://api.mistral.ai/v1`) |
+| `intelligence.model` | `""` | Model name (e.g. `mistral-small-latest`, `gpt-4o-mini`, `llama3.2`) |
+| `intelligence.timeoutSeconds` | `60` | LLM request timeout |
+
+### Slack alerting modes
+
+kube-seer supports two Slack notification paths:
+
+| Mode | `alerter.slack.llmOnly` | Description |
+|---|---|---|
+| **All alerts** (default) | `false` | Raw anomaly alerts via Alertmanager + LLM insights via direct webhook |
+| **LLM-only** | `true` | Only LLM-enriched insights reach Slack. Requires `intelligence.enabled=true`. |
+
+**`groupByPattern`** — when `alerter.groupByPattern=true`, each log pattern type gets its own alertname (e.g. `sre_logs_oom_pod`, `sre_logs_timeout_pod`). This prevents Alertmanager's critical→warning inhibition rule from suppressing alerts of different pattern types in the same namespace. Default: `false`.
 
 ## REST API
 
@@ -204,10 +324,13 @@ helm install kube-seer ./helm/kube-seer \
 | `GET /health` | Agent health |
 | `GET /ready` | Readiness (checks ES, Prometheus) |
 | `GET /status` | Full system status |
-| `GET /anomalies` | Detected anomalies (filterable by severity/namespace/source) |
+| `GET /config` | Active configuration (secrets redacted) |
+| `GET /anomalies` | Detected anomalies (filterable by severity/namespace) |
 | `GET /incidents` | Correlated incidents |
 | `GET /predictions` | Saturation predictions |
 | `GET /alerts/stats` | Alert statistics |
+| `GET /insights/latest` | Latest LLM insight |
+| `GET /insights` | LLM insight history (paginated) |
 | `POST /analyze` | Trigger a manual analysis cycle |
 
 ## Configuration
@@ -234,6 +357,13 @@ helm install kube-seer ./helm/kube-seer \
 | `EXCLUSIONS_STATEFULSETS` | `""` | Comma-separated statefulsets |
 | `EXCLUSIONS_DAEMONSETS` | `""` | Comma-separated daemonsets |
 | `EXCLUSIONS_PODS` | `""` | Comma-separated pods |
+| `INTELLIGENCE_ENABLED` | `false` | Enable LLM analysis |
+| `INTELLIGENCE_PROVIDER` | `""` | `openai` or `anthropic` |
+| `INTELLIGENCE_API_KEY` | `""` | LLM API key |
+| `INTELLIGENCE_API_URL` | `""` | Base URL up to `/v1` |
+| `INTELLIGENCE_MODEL` | `""` | Model name |
+| `INTELLIGENCE_TIMEOUT_SECONDS` | `60` | LLM request timeout |
+| `ALERTER_GROUP_BY_PATTERN` | `false` | Per-pattern alertnames — avoids critical→warning inhibition across different log pattern types |
 
 ## Tests
 

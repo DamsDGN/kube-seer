@@ -109,6 +109,11 @@ dmypy.json
 *.swo
 *~
 
+# Images locales
+*.jpg
+*.jpeg
+*.png
+
 # OS
 .DS_Store
 .DS_Store?

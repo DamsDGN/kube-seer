@@ -56,11 +56,18 @@ class AlertmanagerClient(BaseAlerter):
         except Exception:
             return False
 
+    def _build_alertname(self, anomaly: Anomaly) -> str:
+        if self._config.alerter_group_by_pattern:
+            pattern = anomaly.details.get("pattern", "")
+            if pattern:
+                return f"sre_{anomaly.source}_{pattern}_{anomaly.resource_type}"
+        return f"sre_{anomaly.source}_{anomaly.resource_type}"
+
     def _format_alerts(self, anomalies: List[Anomaly]) -> List[Dict[str, Any]]:
         alerts = []
         for a in anomalies:
             labels: Dict[str, str] = {
-                "alertname": f"sre_{a.source}_{a.resource_type}",
+                "alertname": self._build_alertname(a),
                 "agent": "kube-seer",
                 "severity": SEVERITY_MAP.get(a.severity, "warning"),
                 "source": a.source,

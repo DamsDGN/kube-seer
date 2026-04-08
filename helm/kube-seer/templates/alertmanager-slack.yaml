@@ -1,4 +1,4 @@
-{{- if .Values.alerter.slack.enabled }}
+{{- if and .Values.alerter.slack.enabled (not .Values.alerter.slack.llmOnly) }}
 {{- if and (not .Values.alerter.slack.webhookUrl) (not .Values.alerter.slack.webhookUrlSecretRef) }}
 {{- fail "alerter.slack.enabled is true but neither webhookUrl nor webhookUrlSecretRef is set" }}
 {{- end }}

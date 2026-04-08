@@ -136,6 +136,7 @@ class LLMInsight(BaseModel):
     affected_namespaces: List[str] = []
     raw_response: str = ""
     provider: str = ""
+    fingerprint: Optional[str] = None
 
 
 AnalysisResult.model_rebuild()

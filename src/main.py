@@ -88,6 +88,7 @@ async def main() -> None:
         ),
         alerter_fallback_webhook_url=os.getenv("ALERTER_FALLBACK_WEBHOOK_URL", ""),
         alerter_slack_webhook_url=os.getenv("ALERTER_SLACK_WEBHOOK_URL", ""),
+        alerter_group_by_pattern=_bool("ALERTER_GROUP_BY_PATTERN", "false"),
         elasticsearch_indices_insights=os.getenv(
             "ELASTICSEARCH_INDICES_INSIGHTS", "sre-insights"
         ),
