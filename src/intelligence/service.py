@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -53,7 +54,7 @@ class IntelligenceService:
         self._config = config
         self._storage = storage
         self._provider: Optional[BaseLLMProvider] = None
-        self._last_fingerprint: frozenset = frozenset()
+        self._last_fingerprint: Optional[str] = None
         self._last_insight: Optional[LLMInsight] = None
 
         if config.intelligence_enabled and config.intelligence_provider:
@@ -84,13 +85,34 @@ class IntelligenceService:
         )
         return None
 
-    def _should_call_llm(self, result: AnalysisResult) -> bool:
-        if not result.anomalies:
-            return False
-        fingerprint = frozenset(
+    def _compute_fingerprint(self, result: AnalysisResult) -> str:
+        key = frozenset(
             (a.source, a.resource_type, a.resource_name, a.namespace, a.severity)
             for a in result.anomalies
         )
+        return hashlib.md5(str(sorted(key)).encode()).hexdigest()
+
+    async def _load_last_fingerprint(self) -> None:
+        """Restore the last fingerprint from ES so dedup survives pod restarts."""
+        try:
+            results = await self._storage.query(
+                index=f"{self._config.elasticsearch_indices_insights}-*",
+                query_body={
+                    "bool": {"must": [{"term": {"record_type.keyword": "llm_insight"}}]}
+                },
+                size=1,
+            )
+            if results:
+                self._last_fingerprint = results[0].get("data", {}).get("fingerprint")
+        except Exception:
+            pass
+
+    async def _should_call_llm(self, result: AnalysisResult) -> bool:
+        if not result.anomalies:
+            return False
+        if self._last_fingerprint is None:
+            await self._load_last_fingerprint()
+        fingerprint = self._compute_fingerprint(result)
         if fingerprint == self._last_fingerprint:
             return False
         self._last_fingerprint = fingerprint
@@ -99,7 +121,7 @@ class IntelligenceService:
     async def run(self, result: AnalysisResult) -> Optional[LLMInsight]:
         if not self._provider:
             return None
-        if not self._should_call_llm(result):
+        if not await self._should_call_llm(result):
             return None
 
         try:
@@ -122,6 +144,7 @@ class IntelligenceService:
             affected_namespaces=parsed.get("affected_namespaces", []),
             raw_response=raw,
             provider=f"{self._config.intelligence_provider}/{self._config.intelligence_model}",
+            fingerprint=self._last_fingerprint,
         )
 
         self._last_insight = insight
