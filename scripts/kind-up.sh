@@ -276,7 +276,7 @@ deploy_kube_seer() {
     # Construire les flags Helm optionnels
     local optional_flags=()
     if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
-        optional_flags+=(--set "alerter.slack.webhookUrl=${SLACK_WEBHOOK_URL}")
+        optional_flags+=(--set "alerter.slack.enabled=true" --set "alerter.slack.webhookUrl=${SLACK_WEBHOOK_URL}")
         log_info "Slack notifications activées"
     fi
     if [ -n "${INTELLIGENCE_API_KEY:-}" ]; then
