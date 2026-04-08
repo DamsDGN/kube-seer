@@ -3,7 +3,9 @@
 [![CI/CD Pipeline](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-Intelligent SRE agent for Kubernetes — collects metrics, detects anomalies, correlates incidents, predicts resource saturation, and surfaces ML-based log insights before incidents escalate.
+**kube-seer** is an intelligent SRE agent for Kubernetes. It continuously collects metrics and logs, detects anomalies using threshold rules and ML models, correlates related signals into incidents, and optionally enriches them with LLM-generated root cause analysis and remediation steps — all before your on-call gets paged.
+
+It ships as a single Helm chart and integrates with your existing observability stack (Prometheus, Elasticsearch, Alertmanager, Fluent Bit). The LLM layer is **optional and privacy-first**: use Ollama to run models entirely on-cluster so your metrics and logs never leave your infrastructure, or connect to any OpenAI-compatible API (Mistral, vLLM, LM Studio) or Anthropic.
 
 ## Features
 
@@ -235,19 +237,54 @@ helm install kube-seer ./helm/kube-seer \
 
 ## LLM Intelligence
 
-kube-seer can optionally call an LLM to analyze detected anomalies and suggest root causes and remediation steps. The analysis runs once per detection cycle, deduplicated by anomaly fingerprint so the LLM is only called when the anomaly set changes.
+kube-seer can optionally call an LLM at the end of each detection cycle to produce a synthesized root cause analysis and remediation steps across all detected anomalies. The LLM is only called when the anomaly set changes (fingerprint-based deduplication, persisted across pod restarts), so you won't get duplicate Slack notifications after a rollout.
+
+### Self-hosted vs cloud providers
+
+**Ollama (recommended for sensitive environments):** Deploy Ollama on-cluster and point kube-seer at it. Your metrics, logs, and anomaly data never leave your infrastructure.
+
+```bash
+# Ollama on-cluster — data stays private
+INTELLIGENCE_PROVIDER=openai \
+INTELLIGENCE_API_URL=http://ollama.ollama.svc:11434/v1 \
+INTELLIGENCE_API_KEY=ollama \
+INTELLIGENCE_MODEL=llama3.2 \
+make kind-up
+```
+
+**Cloud providers:** Use any OpenAI-compatible API or Anthropic.
+
+```bash
+# Mistral
+INTELLIGENCE_PROVIDER=openai \
+INTELLIGENCE_API_URL=https://api.mistral.ai/v1 \
+INTELLIGENCE_API_KEY=sk-... \
+INTELLIGENCE_MODEL=mistral-small-latest \
+make kind-up
+
+# OpenAI
+INTELLIGENCE_PROVIDER=openai \
+INTELLIGENCE_API_URL=https://api.openai.com/v1 \
+INTELLIGENCE_API_KEY=sk-... \
+INTELLIGENCE_MODEL=gpt-4o-mini \
+make kind-up
+
+# Anthropic
+INTELLIGENCE_PROVIDER=anthropic \
+INTELLIGENCE_API_KEY=sk-ant-... \
+INTELLIGENCE_MODEL=claude-haiku-4-5-20251001 \
+make kind-up
+```
 
 ### Supported providers
 
-| Provider | `intelligence.provider` | `intelligence.apiUrl` example |
+| Provider | `intelligence.provider` | `intelligence.apiUrl` |
 |---|---|---|
 | **Ollama** (self-hosted) | `openai` | `http://ollama.ollama.svc:11434/v1` |
 | **OpenAI** | `openai` | `https://api.openai.com/v1` |
 | **Mistral** | `openai` | `https://api.mistral.ai/v1` |
 | **vLLM / LM Studio** | `openai` | `http://vllm.svc:8000/v1` |
-| **Anthropic** | `anthropic` | *(not required)* |
-
-> **Self-hosted first**: Ollama lets you run models like `llama3.2`, `mistral`, or `qwen2.5` entirely on-cluster. Your metrics and log data never leave your infrastructure.
+| **Anthropic** | `anthropic` | *(leave empty)* |
 
 ### Helm values
 
@@ -287,10 +324,13 @@ kube-seer supports two Slack notification paths:
 | `GET /health` | Agent health |
 | `GET /ready` | Readiness (checks ES, Prometheus) |
 | `GET /status` | Full system status |
-| `GET /anomalies` | Detected anomalies (filterable by severity/namespace/source) |
+| `GET /config` | Active configuration (secrets redacted) |
+| `GET /anomalies` | Detected anomalies (filterable by severity/namespace) |
 | `GET /incidents` | Correlated incidents |
 | `GET /predictions` | Saturation predictions |
 | `GET /alerts/stats` | Alert statistics |
+| `GET /insights/latest` | Latest LLM insight |
+| `GET /insights` | LLM insight history (paginated) |
 | `POST /analyze` | Trigger a manual analysis cycle |
 
 ## Configuration
