@@ -215,6 +215,20 @@ helm install kube-seer ./helm/kube-seer \
   --set alerter.slack.enabled=true \
   --set alerter.slack.webhookUrl=https://hooks.slack.com/services/... \
   --set alerter.slack.channel='#alerts'
+
+# LLM-only mode: Slack receives only LLM-enriched insights, not raw anomaly alerts
+helm install kube-seer ./helm/kube-seer \
+  --namespace monitoring --create-namespace \
+  --set elasticsearch.url=https://elasticsearch:9200 \
+  --set elasticsearch.password=your-password \
+  --set alerter.slack.enabled=true \
+  --set alerter.slack.webhookUrl=https://hooks.slack.com/services/... \
+  --set alerter.slack.llmOnly=true \
+  --set intelligence.enabled=true \
+  --set intelligence.provider=openai \
+  --set intelligence.apiKey=sk-... \
+  --set intelligence.apiUrl=https://api.mistral.ai/v1 \
+  --set intelligence.model=mistral-small-latest
 ```
 
 > **Log collection:** Fluent Bit is not bundled in the Helm chart — it is an optional infrastructure component. Deploy it separately and point it at your Elasticsearch instance. Set `elasticsearch.indices.logs` to match your log index name (default: `sre-logs`).
@@ -254,6 +268,17 @@ helm install kube-seer ./helm/kube-seer \
 | `intelligence.apiUrl` | `""` | Base URL up to `/v1` (e.g. `https://api.mistral.ai/v1`) |
 | `intelligence.model` | `""` | Model name (e.g. `mistral-small-latest`, `gpt-4o-mini`, `llama3.2`) |
 | `intelligence.timeoutSeconds` | `60` | LLM request timeout |
+
+### Slack alerting modes
+
+kube-seer supports two Slack notification paths:
+
+| Mode | `alerter.slack.llmOnly` | Description |
+|---|---|---|
+| **All alerts** (default) | `false` | Raw anomaly alerts via Alertmanager + LLM insights via direct webhook |
+| **LLM-only** | `true` | Only LLM-enriched insights reach Slack. Requires `intelligence.enabled=true`. |
+
+**`groupByPattern`** — when `alerter.groupByPattern=true`, each log pattern type gets its own alertname (e.g. `sre_logs_oom_pod`, `sre_logs_timeout_pod`). This prevents Alertmanager's critical→warning inhibition rule from suppressing alerts of different pattern types in the same namespace. Default: `false`.
 
 ## REST API
 
@@ -298,6 +323,7 @@ helm install kube-seer ./helm/kube-seer \
 | `INTELLIGENCE_API_URL` | `""` | Base URL up to `/v1` |
 | `INTELLIGENCE_MODEL` | `""` | Model name |
 | `INTELLIGENCE_TIMEOUT_SECONDS` | `60` | LLM request timeout |
+| `ALERTER_GROUP_BY_PATTERN` | `false` | Per-pattern alertnames — avoids critical→warning inhibition across different log pattern types |
 
 ## Tests
 
