@@ -92,6 +92,10 @@ alerter:
     webhookUrlSecretRef: {}
     channel: "#alerts"
     sendResolved: true
+  # When true, alertnames include the pattern type (e.g. sre_logs_oom_pod vs sre_logs_pod)
+  # This prevents Alertmanager's critical→warning inhibition from suppressing alerts
+  # of different log pattern types within the same namespace.
+  groupByPattern: false
 
 # Image
 image:

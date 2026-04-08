@@ -36,7 +36,7 @@ ERROR_PATTERNS = {
         Severity.WARNING,
     ),
     "crash": (
-        re.compile(r"FATAL|panic|segfault|core dump", re.IGNORECASE),
+        re.compile(r"FATAL|panic|segfault|core dump|nil pointer|null pointer|NullPointerException|sigsegv", re.IGNORECASE),
         Severity.CRITICAL,
     ),
 }

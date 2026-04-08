@@ -57,6 +57,7 @@ class Config(BaseModel):
     alerter_fallback_webhook_enabled: bool = False
     alerter_fallback_webhook_url: str = ""
     alerter_slack_webhook_url: str = ""
+    alerter_group_by_pattern: bool = False
 
     # Exclusions (comma-separated strings parsed into lists)
     exclusions_namespaces: List[str] = []
