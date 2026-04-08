@@ -33,7 +33,7 @@ class OpenAIProvider(BaseLLMProvider):
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(
-                f"{self._api_url}/v1/chat/completions",
+                f"{self._api_url}/chat/completions",
                 json=payload,
                 headers=headers,
             )

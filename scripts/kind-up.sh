@@ -125,8 +125,7 @@ spec:
               cpu: 500m
               memory: 1Gi
             limits:
-              cpu: "1"
-              memory: 2Gi
+              memory: 3Gi
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -240,6 +239,23 @@ install_fluent_bit() {
 }
 
 # ------------------------------------------------------------
+# Optional config — read from env or prompt user interactively.
+# Populates: SLACK_WEBHOOK_URL, INTELLIGENCE_PROVIDER,
+#            INTELLIGENCE_API_URL, INTELLIGENCE_API_KEY, INTELLIGENCE_MODEL
+collect_optional_config() {
+    log_section "Configuration optionnelle"
+
+    # Les features optionnelles sont activées via variables d'environnement :
+    #   SLACK_WEBHOOK_URL       — notifications Slack
+    #   INTELLIGENCE_API_KEY    — LLM Intelligence (obligatoire pour activer)
+    #   INTELLIGENCE_PROVIDER   — provider LLM (ex: openai, anthropic, ollama...)
+    #   INTELLIGENCE_MODEL      — modèle LLM (ex: gpt-4o-mini, claude-haiku-4-5...)
+    #   INTELLIGENCE_API_URL    — URL de l'API (pour providers custom ou self-hosted)
+    #
+    # Exemple : SLACK_WEBHOOK_URL=https://... INTELLIGENCE_API_KEY=sk-... make kind-up
+}
+
+# ------------------------------------------------------------
 deploy_kube_seer() {
     log_section "kube-seer"
 
@@ -257,6 +273,23 @@ deploy_kube_seer() {
     log_info "Chargement de l'image dans Kind..."
     kind load docker-image kube-seer:local --name "${CLUSTER_NAME}"
 
+    # Construire les flags Helm optionnels
+    local optional_flags=()
+    if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+        optional_flags+=(--set "alerter.slack.webhookUrl=${SLACK_WEBHOOK_URL}")
+        log_info "Slack notifications activées"
+    fi
+    if [ -n "${INTELLIGENCE_API_KEY:-}" ]; then
+        optional_flags+=(
+            --set "intelligence.enabled=true"
+            --set "intelligence.apiKey=${INTELLIGENCE_API_KEY}"
+        )
+        [ -n "${INTELLIGENCE_PROVIDER:-}" ] && optional_flags+=(--set "intelligence.provider=${INTELLIGENCE_PROVIDER}")
+        [ -n "${INTELLIGENCE_MODEL:-}" ]    && optional_flags+=(--set "intelligence.model=${INTELLIGENCE_MODEL}")
+        [ -n "${INTELLIGENCE_API_URL:-}" ]  && optional_flags+=(--set "intelligence.apiUrl=${INTELLIGENCE_API_URL}")
+        log_info "LLM Intelligence activée"
+    fi
+
     # Déploiement Helm
     log_info "Déploiement Helm kube-seer..."
     helm upgrade --install kube-seer ./helm/kube-seer \
@@ -273,6 +306,7 @@ deploy_kube_seer() {
         --set alerter.alertmanager.url="http://kube-prometheus-stack-alertmanager.${NAMESPACE_MONITORING}.svc:9093" \
         --set service.type=NodePort \
         --set service.nodePort=30080 \
+        "${optional_flags[@]}" \
         --wait \
         --timeout 120s
 
@@ -290,6 +324,17 @@ print_summary() {
     echo ""
     echo "  kubectl context : kind-${CLUSTER_NAME}"
     echo ""
+    if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+        echo "  Slack           : activé"
+    else
+        echo "  Slack           : désactivé (passer SLACK_WEBHOOK_URL pour activer)"
+    fi
+    if [ -n "${INTELLIGENCE_API_KEY:-}" ]; then
+        echo "  LLM Intelligence: activée"
+    else
+        echo "  LLM Intelligence: désactivée (passer INTELLIGENCE_API_KEY pour activer)"
+    fi
+    echo ""
     echo "  Pour supprimer : make kind-down"
     echo ""
 }
@@ -298,6 +343,7 @@ print_summary() {
 main() {
     log_section "kube-seer — Setup environnement Kind"
     check_prerequisites
+    collect_optional_config
     setup_cluster
     install_cert_manager
     install_eck
