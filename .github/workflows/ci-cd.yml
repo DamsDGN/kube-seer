@@ -124,7 +124,9 @@ jobs:
   build-and-push:
     needs: [helm-lint]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: |
+      github.event_name != 'pull_request' &&
+      !(startsWith(github.ref, 'refs/heads/') && startsWith(github.event.head_commit.message, 'chore: bump version to'))
 
     steps:
     - name: 📥 Checkout code
