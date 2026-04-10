@@ -1,7 +1,7 @@
 # kube-seer
 
 [![CI/CD Pipeline](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DamsDGN/kube-seer/actions/workflows/ci-cd.yml)
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 **kube-seer** is an intelligent SRE agent for Kubernetes. It continuously collects metrics and logs, detects anomalies using threshold rules and ML models, correlates related signals into incidents, and optionally enriches them with LLM-generated root cause analysis and remediation steps — all before your on-call gets paged.
 
@@ -420,7 +420,7 @@ GitHub Actions pipeline on every push and PR:
 
 ## License
 
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0](LICENSE) — free for personal and educational use, commercial use upon request.
+[Apache License 2.0](LICENSE)
 
 ## Support
 

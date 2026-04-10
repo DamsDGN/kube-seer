@@ -1,3 +1,18 @@
+# Security Policy
+
+## Reporting a Vulnerability
+
+**Please do not report security vulnerabilities through public GitHub issues.**
+
+Open a [GitHub Security Advisory](https://github.com/DamsDGN/kube-seer/security/advisories/new) with:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+
+You will receive a response within 7 days.
+
+---
+
 # Security Guide
 
 ## ⚠️ IMPORTANT: Sensitive Information
