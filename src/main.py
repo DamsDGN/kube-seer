@@ -110,7 +110,9 @@ async def main() -> None:
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda: asyncio.create_task(agent.stop()))
 
-    uvicorn_config = uvicorn.Config(app, host="0.0.0.0", port=8080, log_level="warning")  # nosec B104
+    uvicorn_config = uvicorn.Config(  # nosec B104
+        app, host="0.0.0.0", port=8080, log_level="warning"
+    )
     server = uvicorn.Server(uvicorn_config)
 
     await asyncio.gather(
