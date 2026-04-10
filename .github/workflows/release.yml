@@ -40,7 +40,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add helm/kube-seer/Chart.yaml helm/kube-seer/values.yaml
-          git commit -m "chore: bump version to ${VERSION}"
+          if git diff --cached --quiet; then
+            echo "No version changes to commit, creating tag only"
+          else
+            git commit -m "chore: bump version to ${VERSION}"
+            git push origin main
+          fi
           git tag v${VERSION}
-          git push origin main
           git push origin v${VERSION}
