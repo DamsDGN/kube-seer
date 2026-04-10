@@ -43,7 +43,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No version changes to commit, creating tag only"
           else
-            git commit -m "chore: bump version to ${VERSION} [skip ci]"
+            git commit -m "chore: bump version to ${VERSION}"
             git push origin main
           fi
           git tag v${VERSION}
