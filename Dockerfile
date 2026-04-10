@@ -1,19 +1,10 @@
 FROM python:3.13-slim as base
 
-# Métadonnées pour OCI
+# Métadonnées statiques pour OCI
 LABEL org.opencontainers.image.title="kube-seer"
 LABEL org.opencontainers.image.description="Agent SRE intelligent pour Kubernetes — détection d'anomalies, corrélation d'incidents, prédiction de saturation"
 LABEL org.opencontainers.image.source="https://github.com/DamsDGN/kube-seer"
-LABEL org.opencontainers.image.licenses="CC-BY-NC-SA-4.0"
-
-# Arguments de build (fournis par le CI/CD)
-ARG BUILDTIME
-ARG VERSION=dev
-ARG REVISION=unknown
-
-LABEL org.opencontainers.image.created=$BUILDTIME
-LABEL org.opencontainers.image.version=$VERSION
-LABEL org.opencontainers.image.revision=$REVISION
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 # Variables d'environnement
 ENV PYTHONUNBUFFERED=1 \
@@ -95,6 +86,14 @@ EXPOSE 8080
 # Healthcheck optimisé avec curl
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
+
+# Métadonnées dynamiques en dernier pour préserver le cache des couches précédentes
+ARG BUILDTIME
+ARG VERSION=dev
+ARG REVISION=unknown
+LABEL org.opencontainers.image.created=$BUILDTIME
+LABEL org.opencontainers.image.version=$VERSION
+LABEL org.opencontainers.image.revision=$REVISION
 
 # Point d'entrée
 CMD ["python", "-m", "src.main"]
