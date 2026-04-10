@@ -72,7 +72,7 @@ class AlerterService:
             f"{anomaly.resource_name}:{anomaly.namespace}:"
             f"{anomaly.severity}"
         )
-        return hashlib.md5(raw.encode()).hexdigest()
+        return hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()
 
     def _deduplicate(self, anomalies: List[Anomaly]) -> List[Anomaly]:
         now = time.monotonic()
