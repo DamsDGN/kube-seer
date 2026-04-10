@@ -9,7 +9,7 @@ It ships as a single Helm chart and integrates with your existing observability 
 
 ## Features
 
-- **Multi-source collection**: Prometheus, Kubernetes Metrics Server, K8s API (14 resource types)
+- **Multi-source collection**: Prometheus, Kubernetes Metrics Server, K8s API (14 resource types), configurable per-collector toggles
 - **Resource state detection**: Static rules for Deployments, StatefulSets, DaemonSets, CronJobs, HPA, PVC, ResourceQuota, NetworkPolicy, Ingress, Node, Service, PDB, PersistentVolume, Namespace
 - **Metrics anomaly detection**: Threshold rules + IsolationForest ML on CPU, memory, disk
 - **Log collection**: Fluent Bit DaemonSet ships container logs to Elasticsearch (`sre-logs` index)
@@ -20,7 +20,7 @@ It ships as a single Helm chart and integrates with your existing observability 
 - **LLM intelligence**: Optional LLM analysis of detected anomalies — root cause suggestions and remediation steps. Works with any OpenAI-compatible API (OpenAI, Mistral, vLLM, LM Studio) or Anthropic. Supports **self-hosted models via Ollama** — your data never leaves the cluster.
 - **Multi-channel alerting**: Alertmanager (primary) + Slack via `AlertmanagerConfig` + fallback webhook
 - **Configurable exclusions**: Skip namespaces, deployments, statefulsets, daemonsets or pods from anomaly detection via Helm values
-- **REST API**: Real-time access to anomalies, incidents, and predictions
+- **REST API**: Real-time access to anomalies, incidents, predictions, and LLM insights
 
 ## Architecture
 
@@ -45,6 +45,8 @@ It ships as a single Helm chart and integrates with your existing observability 
    sre-metrics                            /anomalies    (OpenAI / Mistral /
    sre-anomalies                          /incidents     Ollama / Anthropic)
    sre-logs (Fluent Bit)                  /predictions
+   sre-insights (LLM)                     /insights
+                                          /insights/latest
 ```
 
 ## Collected resource types
@@ -105,7 +107,7 @@ tests/
 │   ├── test_detection.py       # Full pipeline: collect → analyze → anomaly
 │   ├── test_resource_states.py # Resource state scenarios (cordoned node, bad PVC…)
 │   └── test_api.py             # REST API endpoints
-└── ...                   # 259 unit tests + 29 integration tests
+└── ...                   # 300 unit tests + 28 integration tests
 
 helm/kube-seer/           # Helm chart (Deployment, RBAC, AlertmanagerConfig…)
 scripts/
@@ -272,7 +274,7 @@ make kind-up
 # Anthropic
 INTELLIGENCE_PROVIDER=anthropic \
 INTELLIGENCE_API_KEY=sk-ant-... \
-INTELLIGENCE_MODEL=claude-haiku-4-5-20251001 \
+INTELLIGENCE_MODEL=claude-haiku-4-5 \
 make kind-up
 ```
 
@@ -280,11 +282,13 @@ make kind-up
 
 | Provider | `intelligence.provider` | `intelligence.apiUrl` |
 |---|---|---|
-| **Ollama** (self-hosted) | `openai` | `http://ollama.ollama.svc:11434/v1` |
+| **Ollama** (self-hosted) | `openai` or `ollama` | `http://ollama.ollama.svc:11434/v1` |
 | **OpenAI** | `openai` | `https://api.openai.com/v1` |
 | **Mistral** | `openai` | `https://api.mistral.ai/v1` |
 | **vLLM / LM Studio** | `openai` | `http://vllm.svc:8000/v1` |
 | **Anthropic** | `anthropic` | *(leave empty)* |
+
+> Both `"openai"` and `"ollama"` route to the same OpenAI-compatible code path — use either string for Ollama.
 
 ### Helm values
 
@@ -337,41 +341,58 @@ kube-seer supports two Slack notification paths:
 
 | Variable | Default | Description |
 |---|---|---|
-| `ELASTICSEARCH_URL` | — | **Required** |
+| `ELASTICSEARCH_URL` | `http://elasticsearch:9200` | **Required** — Elasticsearch endpoint |
 | `ELASTICSEARCH_USERNAME` | `""` | |
 | `ELASTICSEARCH_PASSWORD` | `""` | |
+| `ELASTICSEARCH_VERIFY_CERTS` | `true` | Set to `false` for self-signed certs |
+| `ELASTICSEARCH_SECRET_REF` | `""` | K8s secret name for ES credentials |
 | `ELASTICSEARCH_INDICES_LOGS` | `sre-logs` | Log index name or pattern |
+| `ELASTICSEARCH_INDICES_METRICS` | `sre-metrics` | Metrics index name |
+| `ELASTICSEARCH_INDICES_ANOMALIES` | `sre-anomalies` | Anomaly index name |
+| `ELASTICSEARCH_INDICES_INSIGHTS` | `sre-insights` | LLM insight index name |
 | `AGENT_ANALYSIS_INTERVAL` | `300` | Cycle interval in seconds |
+| `AGENT_LOG_LEVEL` | `INFO` | Structlog log level |
+| `COLLECTORS_PROMETHEUS_ENABLED` | `true` | Enable Prometheus collector |
+| `COLLECTORS_PROMETHEUS_URL` | `http://prometheus-server:9090` | Prometheus endpoint |
+| `COLLECTORS_METRICS_SERVER_ENABLED` | `true` | Enable Metrics Server collector |
+| `COLLECTORS_K8S_API_ENABLED` | `true` | Enable K8s API collector |
+| `COLLECTORS_K8S_API_WATCH_EVENTS` | `true` | Enable K8s event watching |
 | `THRESHOLDS_CPU_WARNING` | `70.0` | |
 | `THRESHOLDS_CPU_CRITICAL` | `85.0` | |
 | `THRESHOLDS_MEMORY_WARNING` | `70.0` | |
 | `THRESHOLDS_MEMORY_CRITICAL` | `85.0` | |
+| `THRESHOLDS_DISK_WARNING` | `80.0` | |
 | `THRESHOLDS_DISK_CRITICAL` | `90.0` | |
 | `ML_ANOMALY_THRESHOLD` | `0.05` | IsolationForest contamination ratio |
 | `ML_WINDOW_SIZE` | `100` | Rolling buffer size for ML training |
+| `ML_RETRAIN_INTERVAL` | `3600` | IsolationForest retrain interval (seconds) |
 | `PREDICTION_HORIZON_HOURS` | `168` | Saturation prediction horizon (7 days) |
 | `ALERTER_ALERTMANAGER_ENABLED` | `true` | |
 | `ALERTER_ALERTMANAGER_URL` | `http://alertmanager:9093` | |
+| `ALERTER_SLACK_WEBHOOK_URL` | `""` | Direct Slack webhook for LLM insights |
+| `ALERTER_FALLBACK_WEBHOOK_ENABLED` | `false` | Enable generic fallback webhook |
+| `ALERTER_FALLBACK_WEBHOOK_URL` | `""` | Fallback webhook URL |
+| `ALERTER_GROUP_BY_PATTERN` | `false` | Per-pattern alertnames — avoids critical→warning inhibition across different log pattern types |
 | `EXCLUSIONS_NAMESPACES` | `""` | Comma-separated namespaces to skip |
 | `EXCLUSIONS_DEPLOYMENTS` | `""` | Comma-separated deployments (`name` or `namespace/name`) |
 | `EXCLUSIONS_STATEFULSETS` | `""` | Comma-separated statefulsets |
 | `EXCLUSIONS_DAEMONSETS` | `""` | Comma-separated daemonsets |
 | `EXCLUSIONS_PODS` | `""` | Comma-separated pods |
 | `INTELLIGENCE_ENABLED` | `false` | Enable LLM analysis |
-| `INTELLIGENCE_PROVIDER` | `""` | `openai` or `anthropic` |
+| `INTELLIGENCE_PROVIDER` | `""` | `openai`, `ollama`, or `anthropic` |
 | `INTELLIGENCE_API_KEY` | `""` | LLM API key |
-| `INTELLIGENCE_API_URL` | `""` | Base URL up to `/v1` |
+| `INTELLIGENCE_API_KEY_SECRET_REF` | `""` | K8s secret name for LLM API key |
+| `INTELLIGENCE_API_URL` | `""` | Base URL including `/v1` (e.g. `https://api.mistral.ai/v1`) |
 | `INTELLIGENCE_MODEL` | `""` | Model name |
 | `INTELLIGENCE_TIMEOUT_SECONDS` | `60` | LLM request timeout |
-| `ALERTER_GROUP_BY_PATTERN` | `false` | Per-pattern alertnames — avoids critical→warning inhibition across different log pattern types |
 
 ## Tests
 
 ```bash
-# Unit tests (249 tests)
+# Unit tests (300 tests)
 pytest tests/ --ignore=tests/integration -v
 
-# Integration tests (29 tests — requires Kind cluster)
+# Integration tests (28 tests — requires Kind cluster)
 pytest tests/integration/ -v
 
 # With coverage
@@ -383,7 +404,7 @@ pytest tests/ --ignore=tests/integration --cov=src --cov-report=html
 GitHub Actions pipeline on every push and PR:
 
 - Black + flake8
-- 259 unit tests on Python 3.11, 3.12, 3.13
+- 300 unit tests on Python 3.11, 3.12, 3.13
 - Bandit security scan
 - Helm chart validation
 - Multi-platform Docker build (AMD64/ARM64)

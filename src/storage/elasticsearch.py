@@ -94,6 +94,7 @@ class ElasticsearchStorage(BaseStorage):
         index: str,
         query_body: Dict[str, Any],
         size: int = 100,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         if not self._client:
             return []
@@ -102,6 +103,7 @@ class ElasticsearchStorage(BaseStorage):
                 index=index,
                 query=query_body,
                 size=size,
+                from_=offset,
                 sort=[{"data.timestamp": {"order": "desc", "unmapped_type": "date"}}],
             )
             return [hit["_source"] for hit in result["hits"]["hits"]]

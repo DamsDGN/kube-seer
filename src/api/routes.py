@@ -14,7 +14,7 @@ SECRETS_FIELDS = {
 
 
 def create_app(config: Config, agent) -> FastAPI:
-    app = FastAPI(title="EFK SRE Agent", version="2.0.0")
+    app = FastAPI(title="kube-seer", version="2.0.0")
     start_time = datetime.now(timezone.utc)
 
     @app.get("/health")
@@ -161,6 +161,7 @@ def create_app(config: Config, agent) -> FastAPI:
             index=f"{config.elasticsearch_indices_insights}-*",
             query_body=query_body,
             size=limit,
+            offset=offset,
         )
         return {"insights": results, "count": len(results)}
 

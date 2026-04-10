@@ -31,6 +31,7 @@ class BaseStorage(ABC):
         index: str,
         query_body: Dict[str, Any],
         size: int = 100,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """Query records from the storage backend."""
 
