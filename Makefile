@@ -1,6 +1,7 @@
 .PHONY: help setup-dev test test-cov test-integration lint format type-check \
         kind-up kind-down kind-reload \
-        helm-lint helm-template port-forward check-security
+        helm-lint helm-template port-forward check-security \
+        release
 
 VENV := .venv
 CLUSTER_NAME := kube-seer
@@ -64,6 +65,21 @@ helm-template: ## Render Helm chart templates (dry-run)
 
 port-forward: ## Forward kube-seer API to localhost:8080
 	kubectl port-forward -n monitoring svc/kube-seer 8080:8080
+
+# ── Release ───────────────────────────────────────────────────────────────────
+
+release: ## Bump version, commit and tag (usage: make release VERSION=0.2.0)
+ifndef VERSION
+	$(error VERSION is required. Usage: make release VERSION=0.2.0)
+endif
+	@echo "Bumping version to $(VERSION)..."
+	@sed -i "s/^version:.*/version: $(VERSION)/" helm/kube-seer/Chart.yaml
+	@sed -i "s/^appVersion:.*/appVersion: \"$(VERSION)\"/" helm/kube-seer/Chart.yaml
+	@sed -i "s/^  tag:.*/  tag: \"$(VERSION)\"/" helm/kube-seer/values.yaml
+	@git add helm/kube-seer/Chart.yaml helm/kube-seer/values.yaml
+	@git commit -m "chore: bump version to $(VERSION)"
+	@git tag v$(VERSION)
+	@echo "Done. Push with: git push origin main && git push origin v$(VERSION)"
 
 # ── Security ──────────────────────────────────────────────────────────────────
 
