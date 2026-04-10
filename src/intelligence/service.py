@@ -90,7 +90,7 @@ class IntelligenceService:
             (a.source, a.resource_type, a.resource_name, a.namespace, a.severity)
             for a in result.anomalies
         )
-        return hashlib.md5(str(sorted(key)).encode()).hexdigest()
+        return hashlib.md5(str(sorted(key)).encode(), usedforsecurity=False).hexdigest()
 
     async def _load_last_fingerprint(self) -> None:
         """Restore the last fingerprint from ES so dedup survives pod restarts."""
@@ -104,8 +104,8 @@ class IntelligenceService:
             )
             if results:
                 self._last_fingerprint = results[0].get("data", {}).get("fingerprint")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("intelligence_service.fingerprint_load_error", error=str(e))
 
     async def _should_call_llm(self, result: AnalysisResult) -> bool:
         if not result.anomalies:

@@ -18,7 +18,7 @@ check_python() {
         echo "💡 Installation: sudo apt install python3 python3-pip python3-venv"
         exit 1
     fi
-    
+
     PYTHON_VER=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
     echo "✅ Python $PYTHON_VER détecté"
 }
@@ -37,40 +37,40 @@ check_pipx() {
 
 install_dev_tools() {
     echo "📦 Installation des outils de développement avec pipx..."
-    
+
     # Outils essentiels
     pipx install black || echo "⚠️ black déjà installé"
     pipx install flake8 || echo "⚠️ flake8 déjà installé"
     pipx install mypy || echo "⚠️ mypy déjà installé"
     pipx install pytest || echo "⚠️ pytest déjà installé"
-    
+
     echo "✅ Outils de développement installés"
 }
 
 create_venv() {
     echo "🐍 Création de l'environnement virtuel..."
-    
+
     if [ ! -d "$VENV_DIR" ]; then
         python3 -m venv $VENV_DIR
         echo "✅ Environnement virtuel créé dans $VENV_DIR"
     else
         echo "✅ Environnement virtuel existant trouvé"
     fi
-    
+
     # Activation et installation des dépendances
     source $VENV_DIR/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt
-    
+
     echo "✅ Dépendances installées dans l'environnement virtuel"
 }
 
 setup_pre_commit() {
     echo "🔗 Configuration des hooks pre-commit..."
-    
+
     # Installer pre-commit avec pipx
     pipx install pre-commit || echo "⚠️ pre-commit déjà installé"
-    
+
     # Créer le fichier de configuration pre-commit
     cat > .pre-commit-config.yaml << 'EOF'
 repos:
@@ -108,7 +108,7 @@ EOF
 
     # Installer les hooks
     pre-commit install
-    
+
     echo "✅ Pre-commit hooks configurés"
 }
 
@@ -136,7 +136,7 @@ check_kind() {
 
 create_dev_scripts() {
     echo "📜 Création des scripts de développement..."
-    
+
     # Script d'activation de l'environnement
     cat > activate.sh << 'EOF'
 #!/bin/bash
@@ -160,7 +160,7 @@ else
 fi
 EOF
     chmod +x activate.sh
-    
+
     # Script de test rapide
     cat > test.sh << 'EOF'
 #!/bin/bash
@@ -203,7 +203,7 @@ fi
 echo "✅ Tests terminés"
 EOF
     chmod +x test.sh
-    
+
     echo "✅ Scripts de développement créés"
 }
 

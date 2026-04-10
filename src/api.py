@@ -232,7 +232,7 @@ async def retrain_models(agent: SREAgent = Depends(get_agent)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def run_api(host: str = "0.0.0.0", port: int = 8080):
+def run_api(host: str = "0.0.0.0", port: int = 8080):  # nosec B104
     """Lance l'API REST"""
     uvicorn.run("src.api:app", host=host, port=port, log_level="info", reload=False)
 

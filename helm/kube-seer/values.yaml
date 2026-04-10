@@ -104,7 +104,7 @@ alerter:
 # Image
 image:
   repository: damsdgn29/kube-seer
-  tag: "2.0.0"
+  tag: "0.1.0"
   pullPolicy: IfNotPresent
 
 # Resources

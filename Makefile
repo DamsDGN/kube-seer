@@ -15,7 +15,8 @@ setup-dev: ## Create venv and install all dependencies
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install --upgrade pip
 	$(VENV)/bin/pip install -r requirements.txt
-	$(VENV)/bin/pip install pytest-xdist ipython
+	$(VENV)/bin/pip install pytest-xdist ipython pre-commit
+	$(VENV)/bin/pre-commit install
 	@echo "Done. Activate with: source $(VENV)/bin/activate"
 
 test: ## Run unit tests
